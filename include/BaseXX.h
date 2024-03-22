@@ -6,8 +6,6 @@
 #define BASEXX_H
 
 
-#include <iostream>
-
 /// The Base 64 Alphabet Table
 /// https://datatracker.ietf.org/doc/html/rfc4648#section-4
 ///
@@ -68,9 +66,55 @@ namespace BaseXX
 {
 namespace _64_
 {
-    void hello()
+    inline std::string encode(const std::string& str = "")
     {
-        printf("hello, Base64!\n");
+        std::string encoded{};
+        int i = 0;
+        unsigned char arr_3[3] = {0,};
+        unsigned char arr_4[4] = {0,};
+
+        for (size_t pos = 0; pos < str.size(); pos++)
+        {
+            arr_3[i++] = str[pos];
+            if (i == 3)
+            {
+                arr_4[0] = (arr_3[0] & 0b1111'1100) >> 2;
+                arr_4[1] = ((arr_3[0] & 0b0000'0011) << 4) + ((arr_3[1] & 0b1111'0000) >> 4);
+                arr_4[2] = ((arr_3[1] & 0b0000'1111) << 2) + ((arr_3[2] & 0b1100'0000) >> 6);
+                arr_4[3] = arr_3[2] & 0b0011'1111;
+
+                for (size_t k = 0; k < 4; k++)
+                {
+                    encoded += base64_table[arr_4[k]];
+                }
+
+                i = 0;
+            }
+        }
+
+        if (i)  // i == 1 or i == 2
+        {
+            for (size_t j = i; j < 3; j++)
+            {
+                arr_3[j] = '\0';
+            }
+
+            arr_4[0] = (arr_3[0] & 0b1111'1100) >> 2;
+            arr_4[1] = ((arr_3[0] & 0b0000'0011) << 4) + ((arr_3[1] & 0b1111'0000) >> 4);
+            arr_4[2] = ((arr_3[1] & 0b0000'1111) << 2) + ((arr_3[2] & 0b1100'0000) >> 6);
+
+            for (size_t j = 0; j < i + 1; j++)
+            {
+                encoded += base64_table[arr_4[j]];
+            }
+
+            while (i++ < 3)
+            {
+                encoded += '=';
+            }
+        }
+
+        return encoded;
     }
 }  // namespace BaseXX::_64_
 
@@ -90,6 +134,10 @@ namespace _16_
     }
 }  // namespace BaseXX::_16_
 }  // namespace BaseXX
+
+namespace base64 = ::BaseXX::_64_;
+namespace base32 = ::BaseXX::_32_;
+namespace base16 = ::BaseXX::_16_;
 
 
 #endif  // BASEXX_H
