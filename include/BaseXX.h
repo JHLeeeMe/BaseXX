@@ -66,7 +66,8 @@ namespace BaseXX
 {
 namespace _64_
 {
-    inline std::string encode_from_string(const std::string& str)
+    inline std::string encode_from_string(
+            const std::string& str, const unsigned char* encoder_table = base64_table)
     {
         std::string encoded{};
         unsigned char arr_3[3] = {0,};
@@ -85,7 +86,7 @@ namespace _64_
 
                 for (size_t k = 0; k < 4; k++)
                 {
-                    encoded += base64_table[arr_4[k]];
+                    encoded += encoder_table[arr_4[k]];
                 }
 
                 i = 0;
@@ -102,7 +103,7 @@ namespace _64_
 
             for (size_t j = 0; j < i + 1; j++)
             {
-                encoded += base64_table[arr_4[j]];
+                encoded += encoder_table[arr_4[j]];
             }
 
             while (i++ < 3)
@@ -121,11 +122,26 @@ namespace _64_
             : encode_from_string(str);
     }
 
+    inline std::string encode_urlsafe(const std::string& str = "")
+    {
+        return (str.empty())
+            ? std::string("")
+            : encode_from_string(str, base64_urlsafe_table);
+    }
+
     inline std::string encode(const std::initializer_list<unsigned char>& list)
     {
         return (list.size() == 0)
             ? std::string("")
             : encode_from_string(std::string(list.begin(), list.end()));
+    }
+
+    inline std::string encode_urlsafe(const std::initializer_list<unsigned char>& list)
+    {
+        return (list.size() == 0)
+            ? std::string("")
+            : encode_from_string(
+                  std::string(list.begin(), list.end()), base64_urlsafe_table);
     }
 
     template<size_t N>
@@ -134,6 +150,15 @@ namespace _64_
         return (arr.size() == 0)
             ? std::string("")
             : encode_from_string(std::string(arr.begin(), arr.end()));
+    }
+
+    template<size_t N>
+    inline std::string encode_urlsafe(const std::array<unsigned char, N>& arr)
+    {
+        return (arr.size() == 0)
+            ? std::string("")
+            : encode_from_string(
+                  std::string(arr.begin(), arr.end()), base64_urlsafe_table);
     }
 }  // namespace BaseXX::_64_
 
