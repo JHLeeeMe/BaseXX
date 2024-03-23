@@ -12,6 +12,7 @@ TEST(BaseXX, _64_)
     ASSERT_EQ("XG5cMA==", base64::encode("\\n\\0"));
     ASSERT_EQ("IA==", base64::encode(" "));
     ASSERT_EQ("YA==", base64::encode("`"));
+    ASSERT_EQ("7ZWc6riA", base64::encode("한글"));
 }
 
 TEST(BaseXX, _32_)

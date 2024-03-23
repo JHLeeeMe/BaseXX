@@ -69,10 +69,10 @@ namespace _64_
     inline std::string encode(const std::string& str = "")
     {
         std::string encoded{};
-        int i = 0;
         unsigned char arr_3[3] = {0,};
         unsigned char arr_4[4] = {0,};
 
+        int i = 0;
         for (size_t pos = 0; pos < str.size(); pos++)
         {
             arr_3[i++] = str[pos];
@@ -94,10 +94,7 @@ namespace _64_
 
         if (i)  // i == 1 or i == 2
         {
-            for (size_t j = i; j < 3; j++)
-            {
-                arr_3[j] = '\0';
-            }
+            memset(arr_3 + i, 0x00, 3 - i);
 
             arr_4[0] = (arr_3[0] & 0b1111'1100) >> 2;
             arr_4[1] = ((arr_3[0] & 0b0000'0011) << 4) + ((arr_3[1] & 0b1111'0000) >> 4);
