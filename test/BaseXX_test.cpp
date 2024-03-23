@@ -32,6 +32,8 @@ TEST(BaseXX, _64_)
         std::array<unsigned char, 2> arr_2{ 'a', 'A' };  // "aA"
         ASSERT_EQ("YUE=", base64::encode(arr_2));
     }
+    ASSERT_EQ("////", base64::encode({ 0xff, 0xff, 0xff }));
+    ASSERT_EQ("____", base64::encode_urlsafe({ 0xff, 0xff, 0xff }));
 }
 
 TEST(BaseXX, _32_)
