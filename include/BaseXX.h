@@ -66,7 +66,7 @@ namespace BaseXX
 {
 namespace _64_
 {
-    inline std::string encode(const std::string& str = "")
+    inline std::string encode_from_string(const std::string& str)
     {
         std::string encoded{};
         unsigned char arr_3[3] = {0,};
@@ -112,6 +112,28 @@ namespace _64_
         }
 
         return encoded;
+    }
+
+    inline std::string encode(const std::string& str = "")
+    {
+        return (str.empty())
+            ? std::string("")
+            : encode_from_string(str);
+    }
+
+    inline std::string encode(const std::initializer_list<unsigned char>& list)
+    {
+        return (list.size() == 0)
+            ? std::string("")
+            : encode_from_string(std::string(list.begin(), list.end()));
+    }
+
+    template<size_t N>
+    inline std::string encode(const std::array<unsigned char, N>& arr)
+    {
+        return (arr.size() == 0)
+            ? std::string("")
+            : encode_from_string(std::string(arr.begin(), arr.end()));
     }
 }  // namespace BaseXX::_64_
 
