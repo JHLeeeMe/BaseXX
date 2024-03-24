@@ -254,11 +254,26 @@ namespace _32_
             : encode_from_string(str);
     }
 
+    inline std::string encode_hex(const std::string& str = "")
+    {
+        return (str.empty())
+            ? std::string("")
+            : encode_from_string(str, base32_hex_table);
+    }
+
     inline std::string encode(const std::initializer_list<uint8_t>& list)
     {
         return (list.size() == 0)
             ? std::string("")
             : encode_from_string(std::string(list.begin(), list.end()));
+    }
+
+    inline std::string encode_hex(const std::initializer_list<uint8_t>& list)
+    {
+        return (list.size() == 0)
+            ? std::string("")
+            : encode_from_string(
+                std::string(list.begin(), list.end()), base32_hex_table);
     }
 
     template<size_t N>
@@ -267,6 +282,15 @@ namespace _32_
         return (arr.size() == 0)
             ? std::string("")
             : encode_from_string(std::string(arr.begin(), arr.end()));
+    }
+
+    template<size_t N>
+    inline std::string encode_hex(const std::array<uint8_t, N>& arr)
+    {
+        return (arr.size() == 0)
+            ? std::string("")
+            : encode_from_string(
+                std::string(arr.begin(), arr.end()), base32_hex_table);
     }
 }  // namespace BaseXX::_32_
 
