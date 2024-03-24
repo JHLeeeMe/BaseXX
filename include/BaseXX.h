@@ -148,7 +148,7 @@ namespace _64_
     template<size_t N>
     inline std::string encode(const std::array<uint8_t, N>& arr)
     {
-        return (arr.size() == 0)
+        return (arr.empty())
             ? std::string("")
             : encode_from_string(std::string(arr.begin(), arr.end()));
     }
@@ -156,7 +156,7 @@ namespace _64_
     template<size_t N>
     inline std::string encode_urlsafe(const std::array<uint8_t, N>& arr)
     {
-        return (arr.size() == 0)
+        return (arr.empty())
             ? std::string("")
             : encode_from_string(
                 std::string(arr.begin(), arr.end()), base64_urlsafe_table);
@@ -279,7 +279,7 @@ namespace _32_
     template<size_t N>
     inline std::string encode(const std::array<uint8_t, N>& arr)
     {
-        return (arr.size() == 0)
+        return (arr.empty())
             ? std::string("")
             : encode_from_string(std::string(arr.begin(), arr.end()));
     }
@@ -287,7 +287,7 @@ namespace _32_
     template<size_t N>
     inline std::string encode_hex(const std::array<uint8_t, N>& arr)
     {
-        return (arr.size() == 0)
+        return (arr.empty())
             ? std::string("")
             : encode_from_string(
                 std::string(arr.begin(), arr.end()), base32_hex_table);
@@ -296,9 +296,45 @@ namespace _32_
 
 namespace _16_
 {
-    void hello()
+    inline std::string encode_from_string(
+        const std::string& str, const uint8_t* encoder_table = base16_table)
     {
-        printf("hello, Base16!\n");
+        std::string encoded{};
+        uint8_t arr_2[2] = { 0, };
+        for (size_t pos = 0; pos < str.length(); pos++)
+        {
+            arr_2[0] = (str[pos] & 0b1111'0000) >> 4;
+            arr_2[1] = str[pos] & 0b0000'1111;
+
+            for (size_t i = 0; i < 2; i++)
+            {
+                encoded += base16_table[arr_2[i]];
+            }
+        }
+
+        return encoded;
+    }
+
+    inline std::string encode(const std::string& str)
+    {
+        return (str.empty())
+            ? std::string("")
+            : encode_from_string(str);
+    }
+
+    inline std::string encode(const std::initializer_list<uint8_t>& list)
+    {
+        return (list.size() == 0)
+            ? std::string("")
+            : encode_from_string(std::string(list.begin(), list.end()));
+    }
+
+    template<size_t N>
+    inline std::string encode(const std::array<uint8_t, N>& arr)
+    {
+        return (arr.empty())
+            ? std::string("")
+            : encode_from_string(std::string(arr.begin(), arr.end()));
     }
 }  // namespace BaseXX::_16_
 }  // namespace BaseXX

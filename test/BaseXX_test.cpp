@@ -5,7 +5,7 @@
 #include "BaseXX.h"
 
 
-TEST(BaseXX, _64_)
+TEST(Base64, encode)
 {
     ASSERT_EQ("", base64::encode(""));
     ASSERT_EQ("", base64::encode(std::string()));
@@ -37,7 +37,7 @@ TEST(BaseXX, _64_)
     ASSERT_EQ("____", base64::encode_urlsafe({ 0xff, 0xff, 0xff }));
 }
 
-TEST(BaseXX, _32_)
+TEST(Base32, encode)
 {
     { // base32
         ASSERT_EQ("", base32::encode(""));
@@ -98,8 +98,32 @@ TEST(BaseXX, _32_)
     }  // base32_hex
 }
 
-TEST(BaseXX, _16_)
+TEST(Base16, encode)
 {
-    ::BaseXX::_16_::hello();
-    base16::hello();
+    ASSERT_EQ("", base16::encode(""));
+    ASSERT_EQ("", base16::encode(std::string()));
+    ASSERT_EQ("", base16::encode({}));
+
+    ASSERT_EQ("5C", base16::encode("\\"));
+    ASSERT_EQ("5C6E", base16::encode("\\n"));
+    ASSERT_EQ("5C6E5C30", base16::encode("\\n\\0"));
+    ASSERT_EQ("20", base16::encode(" "));
+    ASSERT_EQ("60", base16::encode("`"));
+    ASSERT_EQ("ED959CEAB880", base16::encode("한글"));
+
+    {  // initializer_list<uint8_t>
+        ASSERT_EQ("ED959C", base16::encode({ 0xed, 0x95, 0x9c }));  // '한'
+        ASSERT_EQ("20", base16::encode({ ' ', }));
+    }
+
+    {  // std::array<uint8_t, N>
+        std::array<uint8_t, 0> arr_empty{};
+        ASSERT_EQ("", base16::encode(arr_empty));
+
+        std::array<uint8_t, 3> arr_3{ 0xed, 0x95, 0x9c };  // '한'
+        ASSERT_EQ("ED959C", base16::encode(arr_3));
+
+        std::array<uint8_t, 2> arr_2{ 'a', 'A' };  // "aA"
+        ASSERT_EQ("6141", base16::encode(arr_2));
+    }
 }
