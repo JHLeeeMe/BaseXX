@@ -6,6 +6,12 @@
 #define BASEXX_H
 
 
+#include <cstdint>  // uint8_t
+#include <type_traits>  // std::enable_if_t, std::is_same_v
+#include <string>  // std::string
+
+#define FALLTHROUGH do{} while (false)
+
 /// The Base 64 Alphabet Table
 /// https://datatracker.ietf.org/doc/html/rfc4648#section-4
 ///
@@ -202,7 +208,7 @@ namespace _32_
             std::is_same_v<T, std::string>>
     >
     inline std::string encode_base(
-        const T& data, const uint8_t* encoder_table = base32_table)
+        const T& data, const uint8_t* encoding_table = base32_table)
     {
         std::string encoded{};
         uint8_t arr_5[5] = { 0, };
@@ -235,7 +241,7 @@ namespace _32_
 
                 for (size_t k = 0; k < 8; k++)
                 {
-                    encoded += encoder_table[arr_8[k]];
+                    encoded += encoding_table[arr_8[k]];
                 }
                 
                 i = 0;
@@ -252,14 +258,18 @@ namespace _32_
             case 4:
                 arr_8[6] = (arr_5[3] & 0b0000'0011) << 3;
                 arr_8[5] = (arr_5[3] & 0b0111'1100) >> 2;
+                FALLTHROUGH;
             case 3:
                 arr_8[4] = ((arr_5[2] & 0b0000'1111) << 1) + ((arr_5[3] & 0b1000'0000) >> 7);
+                FALLTHROUGH;
             case 2:
                 arr_8[3] = ((arr_5[1] & 0b0000'0001) << 4) + ((arr_5[2] & 0b1111'0000) >> 4);
                 arr_8[2] = (arr_5[1] & 0b0011'1110) >> 1;
+                FALLTHROUGH;
             case 1:
                 arr_8[1] = ((arr_5[0] & 0b0000'0111) << 2) + ((arr_5[1] & 0b1100'0000) >> 6);
                 arr_8[0] = (arr_5[0] & 0b1111'1000) >> 3;
+                FALLTHROUGH;
             default:
                 break;
             }
@@ -280,7 +290,7 @@ namespace _32_
 
             for (size_t j = 0; j < k; j++)
             {
-                encoded += encoder_table[arr_8[j]];
+                encoded += encoding_table[arr_8[j]];
             }
 
             size_t tmp = encoded.length() % 8;
@@ -356,15 +366,32 @@ namespace _32_
 
 namespace _16_
 {
+    template<
+        typename T,
+        typename = std::enable_if_t<
+            std::is_same_v<T, const char*> ||
+            std::is_same_v<T, std::string>>
+    >
     inline std::string encode_base(
-        const std::string& str, const uint8_t* encoder_table = base16_table)
+        const T& data, const uint8_t* encoding_table = base16_table)
     {
         std::string encoded{};
         uint8_t arr_2[2] = { 0, };
-        for (size_t pos = 0; pos < str.length(); pos++)
+
+        size_t data_len = 0;
+        if constexpr (std::is_same_v<T, const char*>)
         {
-            arr_2[0] = (str[pos] & 0b1111'0000) >> 4;
-            arr_2[1] = str[pos] & 0b0000'1111;
+            data_len = strlen(data);
+        }
+        else
+        {
+            data_len = data.length();
+        }
+
+        for (size_t pos = 0; pos < data_len; pos++)
+        {
+            arr_2[0] = (data[pos] & 0b1111'0000) >> 4;
+            arr_2[1] = data[pos] & 0b0000'1111;
 
             for (size_t i = 0; i < 2; i++)
             {
@@ -373,6 +400,13 @@ namespace _16_
         }
 
         return encoded;
+    }
+
+    inline std::string encode(const char* cstr)
+    {
+        return (cstr == nullptr || *cstr == '\0')
+            ? std::string("")
+            : encode_base(cstr);
     }
 
     inline std::string encode(const std::string& str)
