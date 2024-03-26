@@ -66,17 +66,33 @@ namespace BaseXX
 {
 namespace _64_
 {
-    inline std::string encode_from_string(
-        const std::string& str, const uint8_t* encoder_table = base64_table)
+    template<
+        typename T,
+        typename = std::enable_if_t<
+            std::is_same_v<T, const char*> ||
+            std::is_same_v<T, std::string>>
+    >
+    inline std::string encode_base(
+        const T& data, const uint8_t* encoding_table = base64_table)
     {
         std::string encoded{};
         uint8_t arr_3[3] = {0,};
         uint8_t arr_4[4] = {0,};
 
-        size_t i = 0;
-        for (size_t pos = 0; pos < str.size(); pos++)
+        size_t data_len = 0;
+        if constexpr (std::is_same_v<T, const char*>)
         {
-            arr_3[i++] = str[pos];
+            data_len = strlen(data);
+        }
+        else
+        {
+            data_len = data.size();
+        }
+
+        size_t i = 0;
+        for (size_t pos = 0; pos < data_len; pos++)
+        {
+            arr_3[i++] = data[pos];
             if (i == 3)
             {
                 arr_4[0] = (arr_3[0] & 0b1111'1100) >> 2;
@@ -86,7 +102,7 @@ namespace _64_
 
                 for (size_t k = 0; k < 4; k++)
                 {
-                    encoded += encoder_table[arr_4[k]];
+                    encoded += encoding_table[arr_4[k]];
                 }
 
                 i = 0;
@@ -103,7 +119,7 @@ namespace _64_
 
             for (size_t j = 0; j < i + 1; j++)
             {
-                encoded += encoder_table[arr_4[j]];
+                encoded += encoding_table[arr_4[j]];
             }
 
             size_t tmp = encoded.length() % 4;
@@ -116,32 +132,46 @@ namespace _64_
         return encoded;
     }
 
+    inline std::string encode(const char* cstr = "")
+    {
+        return (cstr == nullptr || *cstr == '\0')
+            ? std::string("")
+            : encode_base(cstr);
+    }
+
+    inline std::string encode_urlsafe(const char* cstr = "")
+    {
+        return (cstr == nullptr || *cstr == '\0')
+            ? std::string("")
+            : encode_base(cstr, base64_urlsafe_table);
+    }
+
     inline std::string encode(const std::string& str = "")
     {
         return (str.empty())
             ? std::string("")
-            : encode_from_string(str);
+            : encode_base(str);
     }
 
     inline std::string encode_urlsafe(const std::string& str = "")
     {
         return (str.empty())
             ? std::string("")
-            : encode_from_string(str, base64_urlsafe_table);
+            : encode_base(str, base64_urlsafe_table);
     }
 
     inline std::string encode(const std::initializer_list<uint8_t>& list)
     {
         return (list.size() == 0)
             ? std::string("")
-            : encode_from_string(std::string(list.begin(), list.end()));
+            : encode_base(std::string(list.begin(), list.end()));
     }
 
     inline std::string encode_urlsafe(const std::initializer_list<uint8_t>& list)
     {
         return (list.size() == 0)
             ? std::string("")
-            : encode_from_string(
+            : encode_base(
                 std::string(list.begin(), list.end()), base64_urlsafe_table);
     }
 
@@ -150,7 +180,7 @@ namespace _64_
     {
         return (arr.empty())
             ? std::string("")
-            : encode_from_string(std::string(arr.begin(), arr.end()));
+            : encode_base(std::string(arr.begin(), arr.end()));
     }
 
     template<size_t N>
@@ -158,14 +188,14 @@ namespace _64_
     {
         return (arr.empty())
             ? std::string("")
-            : encode_from_string(
+            : encode_base(
                 std::string(arr.begin(), arr.end()), base64_urlsafe_table);
     }
 }  // namespace BaseXX::_64_
 
 namespace _32_
 {
-    inline std::string encode_from_string(
+    inline std::string encode_base(
         const std::string& str, const uint8_t* encoder_table = base32_table)
     {
         std::string encoded{};
@@ -251,28 +281,28 @@ namespace _32_
     {
         return (str.empty())
             ? std::string("")
-            : encode_from_string(str);
+            : encode_base(str);
     }
 
     inline std::string encode_hex(const std::string& str = "")
     {
         return (str.empty())
             ? std::string("")
-            : encode_from_string(str, base32_hex_table);
+            : encode_base(str, base32_hex_table);
     }
 
     inline std::string encode(const std::initializer_list<uint8_t>& list)
     {
         return (list.size() == 0)
             ? std::string("")
-            : encode_from_string(std::string(list.begin(), list.end()));
+            : encode_base(std::string(list.begin(), list.end()));
     }
 
     inline std::string encode_hex(const std::initializer_list<uint8_t>& list)
     {
         return (list.size() == 0)
             ? std::string("")
-            : encode_from_string(
+            : encode_base(
                 std::string(list.begin(), list.end()), base32_hex_table);
     }
 
@@ -281,7 +311,7 @@ namespace _32_
     {
         return (arr.empty())
             ? std::string("")
-            : encode_from_string(std::string(arr.begin(), arr.end()));
+            : encode_base(std::string(arr.begin(), arr.end()));
     }
 
     template<size_t N>
@@ -289,14 +319,14 @@ namespace _32_
     {
         return (arr.empty())
             ? std::string("")
-            : encode_from_string(
+            : encode_base(
                 std::string(arr.begin(), arr.end()), base32_hex_table);
     }
 }  // namespace BaseXX::_32_
 
 namespace _16_
 {
-    inline std::string encode_from_string(
+    inline std::string encode_base(
         const std::string& str, const uint8_t* encoder_table = base16_table)
     {
         std::string encoded{};
@@ -319,14 +349,14 @@ namespace _16_
     {
         return (str.empty())
             ? std::string("")
-            : encode_from_string(str);
+            : encode_base(str);
     }
 
     inline std::string encode(const std::initializer_list<uint8_t>& list)
     {
         return (list.size() == 0)
             ? std::string("")
-            : encode_from_string(std::string(list.begin(), list.end()));
+            : encode_base(std::string(list.begin(), list.end()));
     }
 
     template<size_t N>
@@ -334,7 +364,7 @@ namespace _16_
     {
         return (arr.empty())
             ? std::string("")
-            : encode_from_string(std::string(arr.begin(), arr.end()));
+            : encode_base(std::string(arr.begin(), arr.end()));
     }
 }  // namespace BaseXX::_16_
 }  // namespace BaseXX
