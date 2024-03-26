@@ -18,7 +18,8 @@ file(GLOB_RECURSE SRC_G
 
 # Headers
 file(GLOB_RECURSE HDR_G
-    ${CMAKE_SOURCE_DIR}/*.h[pp]
+    ${CMAKE_SOURCE_DIR}/include/*.h
+    ${CMAKE_SOURCE_DIR}/include/*.hpp
 )
 
 # Create Target (BaseXX_Test)
