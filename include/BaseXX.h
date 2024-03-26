@@ -195,17 +195,33 @@ namespace _64_
 
 namespace _32_
 {
+    template<
+        typename T,
+        typename = std::enable_if_t<
+            std::is_same_v<T, const char*> ||
+            std::is_same_v<T, std::string>>
+    >
     inline std::string encode_base(
-        const std::string& str, const uint8_t* encoder_table = base32_table)
+        const T& data, const uint8_t* encoder_table = base32_table)
     {
         std::string encoded{};
         uint8_t arr_5[5] = { 0, };
         uint8_t arr_8[8] = { 0, };
 
-        size_t i = 0;
-        for (size_t pos = 0; pos < str.length(); pos++)
+        size_t data_len = 0;
+        if constexpr (std::is_same_v<T, const char*>)
         {
-            arr_5[i++] = str[pos];
+            data_len = strlen(data);
+        }
+        else
+        {
+            data_len = data.length();
+        }
+
+        size_t i = 0;
+        for (size_t pos = 0; pos < data_len; pos++)
+        {
+            arr_5[i++] = data[pos];
             if (i == 5)
             {
                 arr_8[0] = (arr_5[0] & 0b1111'1000) >> 3;
@@ -277,11 +293,25 @@ namespace _32_
         return encoded;
     }
 
+    inline std::string encode(const char* cstr = "")
+    {
+        return (cstr == nullptr || *cstr == '\0')
+            ? std::string("")
+            : encode_base(cstr);
+    }
+
     inline std::string encode(const std::string& str = "")
     {
         return (str.empty())
             ? std::string("")
             : encode_base(str);
+    }
+
+    inline std::string encode_hex(const char* cstr = "")
+    {
+        return (cstr == nullptr || *cstr == '\0')
+            ? std::string("")
+            : encode_base(cstr, base32_hex_table);
     }
 
     inline std::string encode_hex(const std::string& str = "")
