@@ -5,6 +5,12 @@ project("BaseXX")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# For Intellisense in visual studio
+if (MSVC)
+    add_compile_options(/Zc:__cplusplus)
+endif()
+
+
 # Add sub dir
 add_subdirectory("test/")
 

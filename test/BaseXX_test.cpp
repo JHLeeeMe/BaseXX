@@ -1,5 +1,3 @@
-#include <array>
-
 #include "gtest/gtest.h"
 
 #include "BaseXX.h"
@@ -23,16 +21,21 @@ TEST(Base64, encode)
         ASSERT_EQ("IA==", base64::encode({ ' ', }));
     }
 
-    {  // std::array<uint8_t, N>
-        std::array<uint8_t, 0> arr_empty{};
-        ASSERT_EQ("", base64::encode(arr_empty));
+    {  // std::vector<uint8_t>
+        std::vector<uint8_t> vec_empty{};
+        ASSERT_EQ("", base64::encode(vec_empty));
 
-        std::array<uint8_t, 3> arr_3{ 0xed, 0x95, 0x9c };  // '한'
-        ASSERT_EQ("7ZWc", base64::encode(arr_3));
+        std::vector<uint8_t> vec_1{};
+        vec_1.reserve(128);
+        ASSERT_EQ("", base64::encode(vec_1));
 
-        std::array<uint8_t, 2> arr_2{ 'a', 'A' };  // "aA"
-        ASSERT_EQ("YUE=", base64::encode(arr_2));
+        std::vector<uint8_t> vec_2{ 0xed, 0x95, 0x9c };  // '한'
+        ASSERT_EQ("7ZWc", base64::encode(vec_2));
+
+        std::vector<uint8_t> vec_3{ 'a', 'A' };  // "aA"
+        ASSERT_EQ("YUE=", base64::encode(vec_3));
     }
+
     ASSERT_EQ("////", base64::encode({ 0xff, 0xff, 0xff }));
     ASSERT_EQ("____", base64::encode_urlsafe({ 0xff, 0xff, 0xff }));
 }
