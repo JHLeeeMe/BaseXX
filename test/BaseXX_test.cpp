@@ -59,15 +59,20 @@ TEST(Base32, encode)
             ASSERT_EQ("EA======", base32::encode({ ' ', }));
         }
 
-        {  // std::array<uint8_t, N>
-            std::array<uint8_t, 0> arr_empty{};
-            ASSERT_EQ("", base32::encode(arr_empty));
+        {  // std::vector<uint8_t>
+            std::vector<uint8_t> vec_empty{};
+            ASSERT_EQ("", base32::encode(vec_empty));
 
-            std::array<uint8_t, 3> arr_3{ 0xed, 0x95, 0x9c };  // '한'
-            ASSERT_EQ("5WKZY===", base32::encode(arr_3));
+            std::vector<uint8_t> vec_1{};
+            vec_1.reserve(128);
+            ASSERT_EQ("", base32::encode(vec_1));
 
-            std::array<uint8_t, 2> arr_2{ 'a', 'A' };  // "aA"
-            ASSERT_EQ("MFAQ====", base32::encode(arr_2));
+            std::vector<uint8_t> vec_2{ 'a', 'A' };  // "aA"
+            ASSERT_EQ("MFAQ====", base32::encode(vec_2));
+
+            std::vector<uint8_t> vec_3{ 0xed, 0x95, 0x9c };  // '한'
+            ASSERT_EQ("5WKZY===", base32::encode(vec_3));
+
         }
     }  // base32
 
@@ -88,15 +93,20 @@ TEST(Base32, encode)
             ASSERT_EQ("40======", base32::encode_hex({ ' ', }));
         }
 
-        {  // std::array<uint8_t, N>
-            std::array<uint8_t, 0> arr_empty{};
-            ASSERT_EQ("", base32::encode_hex(arr_empty));
+        {  // std::vector<uint8_t>
+            std::vector<uint8_t> vec_empty{};
+            ASSERT_EQ("", base32::encode_hex(vec_empty));
 
-            std::array<uint8_t, 3> arr_3{ 0xed, 0x95, 0x9c };  // '한'
-            ASSERT_EQ("TMAPO===", base32::encode_hex(arr_3));
+            std::vector<uint8_t> vec_1{};
+            vec_1.reserve(128);
+            ASSERT_EQ("", base32::encode_hex(vec_1));
 
-            std::array<uint8_t, 2> arr_2{ 'a', 'A' };  // "aA"
-            ASSERT_EQ("C50G====", base32::encode_hex(arr_2));
+            std::vector<uint8_t> vec_2{ 'a', 'A' };  // "aA"
+            ASSERT_EQ("C50G====", base32::encode_hex(vec_2));
+
+            std::vector<uint8_t> vec_3{ 0xed, 0x95, 0x9c };  // '한'
+            ASSERT_EQ("TMAPO===", base32::encode_hex(vec_3));
+
         }
     }  // base32_hex
 }
@@ -119,14 +129,18 @@ TEST(Base16, encode)
         ASSERT_EQ("20", base16::encode({ ' ', }));
     }
 
-    {  // std::array<uint8_t, N>
-        std::array<uint8_t, 0> arr_empty{};
-        ASSERT_EQ("", base16::encode(arr_empty));
+    {  // std::vector<uint8_t>
+        std::vector<uint8_t> vec_empty{};
+        ASSERT_EQ("", base16::encode(vec_empty));
 
-        std::array<uint8_t, 3> arr_3{ 0xed, 0x95, 0x9c };  // '한'
-        ASSERT_EQ("ED959C", base16::encode(arr_3));
+        std::vector<uint8_t> vec_1{};
+        vec_1.reserve(100);
+        ASSERT_EQ("", base16::encode(vec_1));
 
-        std::array<uint8_t, 2> arr_2{ 'a', 'A' };  // "aA"
-        ASSERT_EQ("6141", base16::encode(arr_2));
+        std::vector<uint8_t> vec_2{ 'a', 'A' };  // "aA"
+        ASSERT_EQ("6141", base16::encode(vec_2));
+
+        std::vector<uint8_t> vec_3{ 0xed, 0x95, 0x9c };  // '한'
+        ASSERT_EQ("ED959C", base16::encode(vec_3));
     }
 }
