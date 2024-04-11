@@ -74,6 +74,12 @@ static const uint8_t base16_table[16] = {
 
 namespace BaseXX
 {
+#if __cplusplus >= 201703L
+    using StringType = std::string_view;
+#else
+    using StringType = const std::string&;
+#endif  // __cplusplus >= 201703L
+
 namespace _64_
 {
     inline std::string encode_base(const char* data,
@@ -128,8 +134,6 @@ namespace _64_
 
     /***************************************************************************
     * Helper Functions
-    *   using StringType = std::string_view || const std::string&
-    *
     *   inline std::string encode(StringType)
     *   inline std::string encode_urlsafe(StringType)
     * 
@@ -139,12 +143,6 @@ namespace _64_
     *   inline std::string encode(const std::vector<uint8_t>&)
     *   inline std::string encode_urlsafe(const std::vector<uint8_t>&)
     ***************************************************************************/
-#if __cplusplus >= 201703L
-    using StringType = std::string_view;
-#else
-    using StringType = const std::string&;
-#endif
-
     inline std::string encode(StringType str = "")
     {
         return (str.empty())
