@@ -193,28 +193,12 @@ namespace _64_
 
 namespace _32_
 {
-    template<
-        typename T,
-        typename = std::enable_if_t<
-            std::is_same_v<T, const char*> ||
-            std::is_same_v<T, std::string>>
-    >
-    inline std::string encode_base(
-        const T& data, const uint8_t* encoding_table = base32_table)
+    inline std::string encode_base(const char* data,
+        const size_t data_len, const uint8_t* encoding_table = base32_table)
     {
         std::string encoded{};
         uint8_t arr_5[5] = { 0, };
         uint8_t arr_8[8] = { 0, };
-
-        size_t data_len = 0;
-        if constexpr (std::is_same_v<T, const char*>)
-        {
-            data_len = strlen(data);
-        }
-        else
-        {
-            data_len = data.length();
-        }
 
         size_t i = 0;
         for (size_t pos = 0; pos < data_len; pos++)
@@ -294,90 +278,71 @@ namespace _32_
         return encoded;
     }
 
-    inline std::string encode(const char* cstr = "")
-    {
-        return (cstr == nullptr || *cstr == '\0')
-            ? std::string("")
-            : encode_base(cstr);
-    }
-
-    inline std::string encode(const std::string& str = "")
-    {
-        return (str.empty())
-            ? std::string("")
-            : encode_base(str);
-    }
-
-    inline std::string encode_hex(const char* cstr = "")
-    {
-        return (cstr == nullptr || *cstr == '\0')
-            ? std::string("")
-            : encode_base(cstr, base32_hex_table);
-    }
-
-    inline std::string encode_hex(const std::string& str = "")
+    /***************************************************************************
+    * Helper Functions
+    *   inline std::string encode(StringType)
+    *   inline std::string encode_hex(StringType)
+    * 
+    *   inline std::string encode(const std::initializer_list<uint8_t>&)
+    *   inline std::string encode_hex(const std::initializer_list<uint8_t>&)
+    * 
+    *   inline std::string encode(const std::vector<uint8_t>&)
+    *   inline std::string encode_hex(const std::vector<uint8_t>&)
+    ***************************************************************************/
+    inline std::string encode(StringType str = "")
     {
         return (str.empty())
             ? std::string("")
-            : encode_base(str, base32_hex_table);
+            : encode_base(str.data(), str.length());
+    }
+
+    inline std::string encode_hex(StringType str = "")
+    {
+        return (str.empty())
+            ? std::string("")
+            : encode_base(str.data(), str.length(), base32_hex_table);
     }
 
     inline std::string encode(const std::initializer_list<uint8_t>& list)
     {
         return (list.size() == 0)
             ? std::string("")
-            : encode_base(std::string(list.begin(), list.end()));
+            : encode_base(
+                reinterpret_cast<const char*>(list.begin()), list.size());
     }
 
     inline std::string encode_hex(const std::initializer_list<uint8_t>& list)
     {
         return (list.size() == 0)
             ? std::string("")
-            : encode_base(
-                std::string(list.begin(), list.end()), base32_hex_table);
+            : encode_base(reinterpret_cast<const char*>(list.begin()),
+                list.size(), base32_hex_table);
     }
 
-    template<size_t N>
-    inline std::string encode(const std::array<uint8_t, N>& arr)
+    inline std::string encode(const std::vector<uint8_t>& vec)
     {
-        return (arr.empty())
-            ? std::string("")
-            : encode_base(std::string(arr.begin(), arr.end()));
-    }
-
-    template<size_t N>
-    inline std::string encode_hex(const std::array<uint8_t, N>& arr)
-    {
-        return (arr.empty())
+        return (vec.empty())
             ? std::string("")
             : encode_base(
-                std::string(arr.begin(), arr.end()), base32_hex_table);
+                reinterpret_cast<const char*>(vec.data()), vec.size());
+    }
+
+    inline std::string encode_hex(const std::vector<uint8_t>& vec)
+    {
+        return (vec.empty())
+            ? std::string("")
+            : encode_base(reinterpret_cast<const char*>(vec.data()),
+                vec.size(), base32_hex_table);
     }
 }  // namespace BaseXX::_32_
 
 namespace _16_
 {
-    template<
-        typename T,
-        typename = std::enable_if_t<
-            std::is_same_v<T, const char*> ||
-            std::is_same_v<T, std::string>>
-    >
-    inline std::string encode_base(
-        const T& data, const uint8_t* encoding_table = base16_table)
+    inline std::string encode_base(const char* data,
+        const size_t data_len, const uint8_t* encoding_table = base16_table)
     {
         std::string encoded{};
         uint8_t arr_2[2] = { 0, };
-
-        size_t data_len = 0;
-        if constexpr (std::is_same_v<T, const char*>)
-        {
-            data_len = strlen(data);
-        }
-        else
-        {
-            data_len = data.length();
-        }
 
         for (size_t pos = 0; pos < data_len; pos++)
         {
@@ -386,40 +351,42 @@ namespace _16_
 
             for (size_t i = 0; i < 2; i++)
             {
-                encoded += base16_table[arr_2[i]];
+                encoded += encoding_table[arr_2[i]];
             }
         }
 
         return encoded;
     }
 
-    inline std::string encode(const char* cstr)
+    /***************************************************************************
+    * Helper Functions
+    *   inline std::string encode(StringType)
+    * 
+    *   inline std::string encode(const std::initializer_list<uint8_t>&)
+    * 
+    *   inline std::string encode(const std::vector<uint8_t>&)
+    ***************************************************************************/
+    inline std::string encode(StringType str)
     {
-        return (cstr == nullptr || *cstr == '\0')
+        return (str.size() == 0)
             ? std::string("")
-            : encode_base(cstr);
-    }
-
-    inline std::string encode(const std::string& str)
-    {
-        return (str.empty())
-            ? std::string("")
-            : encode_base(str);
+            : encode_base(str.data(), str.size());
     }
 
     inline std::string encode(const std::initializer_list<uint8_t>& list)
     {
         return (list.size() == 0)
             ? std::string("")
-            : encode_base(std::string(list.begin(), list.end()));
+            : encode_base(
+                reinterpret_cast<const char*>(list.begin()), list.size());
     }
 
-    template<size_t N>
-    inline std::string encode(const std::array<uint8_t, N>& arr)
+    inline std::string encode(const std::vector<uint8_t>& vec)
     {
-        return (arr.empty())
+        return (vec.empty())
             ? std::string("")
-            : encode_base(std::string(arr.begin(), arr.end()));
+            : encode_base(
+                reinterpret_cast<const char*>(vec.data()), vec.size());
     }
 }  // namespace BaseXX::_16_
 }  // namespace BaseXX
