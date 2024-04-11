@@ -2,14 +2,20 @@ cmake_minimum_required(VERSION 3.15)
 project("BaseXX")
 
 # GoogleTest requires at least C++14
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-# For Intellisense in visual studio
 if (MSVC)
-    add_compile_options(/Zc:__cplusplus)
+    add_compile_options(/Zc:__cplusplus)  # For intellisense in Visual Studio
+    add_compile_options(/W4 /WX)
+else()
+    add_compile_options(-Wall -Wextra -pedantic -Werror)
 endif()
 
+if (WIN32)
+  add_definitions(-D_UNICODE -DUNICODE)
+endif()
 
 # Add sub dir
 add_subdirectory("test/")
