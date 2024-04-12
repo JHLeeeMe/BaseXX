@@ -2,7 +2,6 @@
 
 #include "BaseXX.h"
 
-
 TEST(Base64, encode)
 {
     ASSERT_EQ("", base64::encode(""));
@@ -119,7 +118,6 @@ TEST(Base32, encode)
 
         std::vector<uint8_t> vec_3{ 0xed, 0x95, 0x9c };  // '한'
         ASSERT_EQ("5WKZY===", base32::encode(vec_3));
-
     }
 }  // TEST(Base32, encode)
 
@@ -201,4 +199,58 @@ TEST(Base16, encode)
         ASSERT_EQ("ED959C", base16::encode(vec_3));
     }
 }  // TEST(Base16, encode)
+
+TEST(Base16, decode)
+{
+    ASSERT_EQ("", base16::decode(""));
+    ASSERT_EQ("", base16::decode(std::string()));
+    ASSERT_EQ("", base16::decode({}));
+
+    ASSERT_EQ("\\", base16::decode("5C"));
+    ASSERT_EQ("\\n", base16::decode("5C6E"));
+    ASSERT_EQ("\\n\\0", base16::decode("5C6E5C30"));
+    ASSERT_EQ(" ", base16::decode("20"));
+    ASSERT_EQ("`", base16::decode("60"));
+
+    ASSERT_EQ("한글", base16::decode("ED959CEAB880"));
+    ASSERT_EQ("漢字", base16::decode("E6BCA2E5AD97"));
+    ASSERT_EQ("汉字", base16::decode("E6B189E5AD97"));
+    ASSERT_EQ("ひらがな", base16::decode("E381B2E38289E3818CE381AA"));
+    ASSERT_EQ("カタカナ", base16::decode("E382ABE382BFE382ABE3838A"));
+
+    {  // initializer_list<uint8_t>
+        ASSERT_EQ("한", base16::decode({ 'E', 'D', '9', '5', '9', 'C' }));  // '한'
+        ASSERT_EQ(" ", base16::decode({ '2', '0' }));
+    }
+
+    {  // std::vector<uint8_t>
+        std::vector<uint8_t> vec_empty{};
+        ASSERT_EQ("", base16::decode(vec_empty));
+
+        std::vector<uint8_t> vec_1{};
+        vec_1.reserve(100);
+        ASSERT_EQ("", base16::decode(vec_1));
+
+        std::vector<uint8_t> vec_2{ '6', '1', '4', '1' };  // "aA"
+        ASSERT_EQ("aA", base16::decode(vec_2));
+
+        std::vector<uint8_t> vec_3{ 'E', 'D', '9', '5', '9', 'C' };  // '한'
+        ASSERT_EQ("한", base16::decode(vec_3));
+    }
+
+    {  // multiple encode & decode
+        using namespace ::BaseXX::_16_;
+        ASSERT_EQ("한글", decode(encode("한글")));
+        ASSERT_EQ("ひらがな",
+            decode(decode(
+            encode(encode(
+            decode(
+            encode("ひらがな")))))));
+    }
+
+    {  // exception
+        ASSERT_THROW(base16::decode("F"), std::runtime_error);
+        ASSERT_THROW(base16::decode("GG"), std::runtime_error);
+    }
+}  // TEST(Base16, decode)
 

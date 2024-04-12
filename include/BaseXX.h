@@ -7,6 +7,7 @@
 
 
 #include <cstdint>  // uint8_t
+#include <stdexcept>  // std::runtime_error
 #include <string>
 #include <vector>
 #if __cplusplus >= 201703L
@@ -57,6 +58,8 @@ namespace _64_
         const size_t data_len, const uint8_t* table = encoding_table)
     {
         std::string encoded{};
+        encoded.reserve(data_len);
+
         uint8_t arr_3[3] = {0,};
         uint8_t arr_4[4] = {0,};
 
@@ -103,17 +106,11 @@ namespace _64_
         return encoded;
     }
 
-    /***************************************************************************
-    * Helper Functions
-    *   inline std::string encode(StringType)
-    *   inline std::string encode_urlsafe(StringType)
-    * 
-    *   inline std::string encode(const std::initializer_list<uint8_t>&)
-    *   inline std::string encode_urlsafe(const std::initializer_list<uint8_t>&)
-    * 
-    *   inline std::string encode(const std::vector<uint8_t>&)
-    *   inline std::string encode_urlsafe(const std::vector<uint8_t>&)
-    ***************************************************************************/
+
+    /// ========================================================================
+    /// Helper Functions
+    /// ========================================================================
+
     inline std::string encode(StringType str = "")
     {
         return (str.empty())
@@ -188,6 +185,8 @@ namespace _32_
         const size_t data_len, const uint8_t* table = encoding_table)
     {
         std::string encoded{};
+        encoded.reserve(data_len * 2);
+
         uint8_t arr_5[5] = { 0, };
         uint8_t arr_8[8] = { 0, };
 
@@ -269,17 +268,11 @@ namespace _32_
         return encoded;
     }
 
-    /***************************************************************************
-    * Helper Functions
-    *   inline std::string encode(StringType)
-    *   inline std::string encode_hex(StringType)
-    * 
-    *   inline std::string encode(const std::initializer_list<uint8_t>&)
-    *   inline std::string encode_hex(const std::initializer_list<uint8_t>&)
-    * 
-    *   inline std::string encode(const std::vector<uint8_t>&)
-    *   inline std::string encode_hex(const std::vector<uint8_t>&)
-    ***************************************************************************/
+
+    /// ========================================================================
+    /// Helper Functions
+    /// ========================================================================
+
     inline std::string encode(StringType str = "")
     {
         return (str.empty())
@@ -337,10 +330,26 @@ namespace _16_
         '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',  // 8 ~ 15
     };
 
+    inline const uint8_t decode_char(const char c)
+    {
+        if (c >= '0' && c <= '9')
+        {
+            return c - '0';
+        }
+        else if (c >= 'A' && c <= 'F')
+        {
+            return 10 + (c - 'A');
+        }
+
+        throw std::runtime_error("Invalid character in Base16 encoding");
+    }
+
     inline std::string encode_base(const char* data,
         const size_t data_len, const uint8_t* table = encoding_table)
     {
         std::string encoded{};
+        encoded.reserve(data_len * 2);
+
         uint8_t arr_2[2] = { 0, };
 
         for (size_t pos = 0; pos < data_len; pos++)
@@ -357,14 +366,29 @@ namespace _16_
         return encoded;
     }
 
-    /***************************************************************************
-    * Helper Functions
-    *   inline std::string encode(StringType)
-    * 
-    *   inline std::string encode(const std::initializer_list<uint8_t>&)
-    * 
-    *   inline std::string encode(const std::vector<uint8_t>&)
-    ***************************************************************************/
+    inline std::string decode_base(const char* data, const size_t data_len)
+    {
+        if (data_len % 2 != 0)
+        {
+            throw std::runtime_error("Invalid Base16 encoded length");
+        }
+
+        std::string decoded{};
+        decoded.reserve(data_len / 2);
+
+        for (size_t i = 0; i < data_len; i += 2)
+        {
+            decoded += ((decode_char(data[i]) << 4) | decode_char(data[i + 1]));
+        }
+
+        return decoded;
+    }
+
+
+    /// ========================================================================
+    /// Helper Functions
+    /// ========================================================================
+
     inline std::string encode(StringType str)
     {
         return (str.size() == 0)
@@ -385,6 +409,28 @@ namespace _16_
         return (vec.empty())
             ? std::string("")
             : encode_base(
+                reinterpret_cast<const char*>(vec.data()), vec.size());
+    }
+
+    inline std::string decode(StringType str)
+    {
+        return (str.size() == 0)
+            ? std::string("")
+            : decode_base(str.data(), str.size());
+    }
+
+    inline std::string decode(const std::initializer_list<uint8_t>& list)
+    {
+        return (list.size() == 0)
+            ? std::string("")
+            : decode_base(reinterpret_cast<const char*>(list.begin()), list.size());
+    }
+
+    inline std::string decode(const std::vector<uint8_t>& vec)
+    {
+        return (vec.size() == 0)
+            ? std::string("")
+            : decode_base(
                 reinterpret_cast<const char*>(vec.data()), vec.size());
     }
 }  // namespace BaseXX::_16_
