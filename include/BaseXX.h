@@ -7,6 +7,7 @@
 
 
 #include <cstdint>  // uint8_t
+#include <functional>  // std::function
 #include <stdexcept>  // std::runtime_error
 #include <string>
 #include <vector>
@@ -161,6 +162,12 @@ namespace _64_
 
 namespace _32_
 {
+    enum class eEncodedType
+    {
+        Standard = 0,
+        Hex,
+    };
+
     /// The Base 32 Alphabet Table
     /// https://datatracker.ietf.org/doc/html/rfc4648#section-6
     ///
@@ -180,6 +187,87 @@ namespace _32_
         'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N',  // 16 ~ 23
         'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',  // 24 ~ 31
     };
+
+    inline bool is_valid_encoded_text(const char* encoded_text,
+        const size_t text_len, eEncodedType encoded_type)
+    {
+        if (text_len % 8 != 0)
+        {
+            throw std::runtime_error("Invalid Base32 encoded length.");
+        }
+
+        size_t padding_cnt = 0;
+        for (size_t i = text_len - 1; i >= 0; i--)
+        {
+            if (encoded_text[i] != '=')
+            {
+                break;
+            }
+
+            padding_cnt++;
+        }
+
+        // max padding count is 6
+        if (padding_cnt > 6)
+        {
+            return false;
+        }
+
+        if (encoded_type == eEncodedType::Standard)
+        {
+            for (size_t i = 0; i < text_len - padding_cnt; i++)
+            {
+                const char c = encoded_text[i];
+                if (!('A' <= c && c <= 'Z') &&
+                    !('2' <= c && c <= '7'))
+                {
+                    return false;
+                }
+            }
+        }
+        else if (encoded_type == eEncodedType::Hex)
+        {
+            for (size_t i = 0; i < text_len - padding_cnt; i++)
+            {
+                const char c = encoded_text[i];
+                if (!('0' <= c && c <= '9') &&
+                    !('A' <= c && c <= 'V'))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    inline const uint8_t decode_char(const char c)
+    {
+        if (c >= 'A' && c <= 'Z')
+        {
+            return c - 'A';
+        }
+        else if (c >= '2' && c <= '7')
+        {
+            return 26 + (c - '2');
+        }
+
+        throw std::runtime_error("Invalid character in Base32 Encoding.");
+    }
+
+    inline const uint8_t hex_decode_char(const char c)
+    {
+        if (c >= '0' && c <= '9')
+        {
+            return c - '0';
+        }
+        else if (c >= 'A' && c <= 'V')
+        {
+            return 10 + (c - 'A');
+        }
+
+        throw std::runtime_error("Invalid character in Base32-Hex Encoding.");
+    }
 
     inline std::string encode_base(const char* data,
         const size_t data_len, const uint8_t* table = encoding_table)
@@ -268,6 +356,127 @@ namespace _32_
         return encoded;
     }
 
+    inline std::string decode_base(const char* data,
+        const size_t data_len, eEncodedType encoded_type)
+    {
+        if (!is_valid_encoded_text(data, data_len, encoded_type))
+        {
+            throw std::runtime_error("Invalid Base32[-Hex] encoded text.");
+        }
+
+        std::function<const uint8_t(const char)> decode_char_func{};
+        if (encoded_type == eEncodedType::Standard)
+        {
+            decode_char_func = &decode_char;
+        }
+        else
+        {
+            decode_char_func = &hex_decode_char;
+        }
+
+        std::string decoded{};
+        decoded.reserve(data_len * 5 / 8);
+
+        uint8_t arr_8[8] = { 0, };
+        uint8_t arr_5[5] = { 0, };
+
+        size_t i = 0;
+        for (size_t pos = 0; pos < data_len; pos++)
+        {
+            if (data[pos] == '=')
+            {
+                break;
+            }
+
+            arr_8[i++] = decode_char_func(data[pos]);
+
+            if (i == 8)
+            {
+                arr_5[0] = (arr_8[0] << 3) + (arr_8[1] >> 2);
+                arr_5[1] = ((arr_8[1] & 0x03) << 6) +
+                    (arr_8[2] << 1) + (arr_8[3] >> 4);
+                arr_5[2] = ((arr_8[3] & 0x0F) << 4) + (arr_8[4] >> 1);
+                arr_5[3] = ((arr_8[4] & 0x01) << 7) +
+                    (arr_8[5] << 2) + (arr_8[6] >> 3);
+                arr_5[4] = ((arr_8[6] & 0x07) << 5) + arr_8[7];
+
+                for (size_t j = 0; j < 5; ++j)
+                {
+                    decoded.push_back(arr_5[j]);
+                }
+
+                i = 0;
+            }
+        }
+
+        if (i)  // i == (1 ~ 7)
+        {
+            /*
+            switch (i)
+            {
+            case 2: // +1 byte
+                arr_5[0] = (arr_8[0] << 3) | (arr_8[1] >> 2);
+                decoded.push_back(arr_5[0]);
+                break;
+            case 4: // +2 bytes
+                arr_5[0] = (arr_8[0] << 3) | (arr_8[1] >> 2);
+                arr_5[1] = ((arr_8[1] & 0x03) << 6) | (arr_8[2] << 1) | (arr_8[3] >> 4);
+                decoded.push_back(arr_5[0]);
+                decoded.push_back(arr_5[1]);
+                break;
+            case 5: // +2 bytes, 마지막 비트는 무시
+                arr_5[0] = (arr_8[0] << 3) | (arr_8[1] >> 2);
+                arr_5[1] = ((arr_8[1] & 0x03) << 6) | (arr_8[2] << 1) | (arr_8[3] >> 4);
+                arr_5[2] = ((arr_8[3] & 0x0F) << 4) | (arr_8[4] >> 1);
+                decoded.push_back(arr_5[0]);
+                decoded.push_back(arr_5[1]);
+                decoded.push_back(arr_5[2]);
+                break;
+            case 7: // +4 bytes, 마지막 비트는 무시
+                arr_5[0] = (arr_8[0] << 3) | (arr_8[1] >> 2);
+                arr_5[1] = ((arr_8[1] & 0x03) << 6) | (arr_8[2] << 1) | (arr_8[3] >> 4);
+                arr_5[2] = ((arr_8[3] & 0x0F) << 4) | (arr_8[4] >> 1);
+                arr_5[3] = ((arr_8[4] & 0x01) << 7) | (arr_8[5] << 2) | (arr_8[6] >> 3);
+                decoded.push_back(arr_5[0]);
+                decoded.push_back(arr_5[1]);
+                decoded.push_back(arr_5[2]);
+                decoded.push_back(arr_5[3]);
+                break;
+            }
+            */
+
+            size_t k = 0;
+            switch (i)
+            {
+            case 7:
+                arr_5[3] = ((arr_8[4] & 0x01) << 7) | (arr_8[5] << 2) | (arr_8[6] >> 3);
+                k++;
+                FALLTHROUGH;
+            case 5:
+                arr_5[2] = ((arr_8[3] & 0x0F) << 4) | (arr_8[4] >> 1);
+                k++;
+                FALLTHROUGH;
+            case 4:
+                arr_5[1] = ((arr_8[1] & 0x03) << 6) | (arr_8[2] << 1) | (arr_8[3] >> 4);
+                k++;
+                FALLTHROUGH;
+            case 2:
+                arr_5[0] = (arr_8[0] << 3) | (arr_8[1] >> 2);
+                k++;
+                FALLTHROUGH;
+            default:
+                break;
+            }
+
+            for (size_t idx = 0; idx < k; idx++)
+            {
+                decoded.push_back(arr_5[idx]);
+            }
+        }
+
+        return decoded;
+    }
+
 
     /// ========================================================================
     /// Helper Functions
@@ -317,6 +526,52 @@ namespace _32_
             ? std::string("")
             : encode_base(reinterpret_cast<const char*>(vec.data()),
                 vec.size(), hex_encoding_table);
+    }
+
+    inline std::string decode(StringType str = "")
+    {
+        return (str.empty())
+            ? std::string("")
+            : decode_base(str.data(), str.size(), eEncodedType::Standard);
+    }
+
+    inline std::string decode_hex(StringType str = "")
+    {
+        return (str.empty())
+            ? std::string("")
+            : decode_base(str.data(), str.size(), eEncodedType::Hex);
+    }
+
+    inline std::string decode(const std::initializer_list<uint8_t>& list)
+    {
+        return (list.size() == 0)
+            ? std::string("")
+            : decode_base(reinterpret_cast<const char*>(list.begin()),
+                list.size(), eEncodedType::Standard);
+    }
+
+    inline std::string decode_hex(const std::initializer_list<uint8_t>& list)
+    {
+        return (list.size() == 0)
+            ? std::string("")
+            : decode_base(reinterpret_cast<const char*>(list.begin()),
+                list.size(), eEncodedType::Hex);
+    }
+
+    inline std::string decode(const std::vector<uint8_t>& vec)
+    {
+        return (vec.empty())
+            ? std::string("")
+            : decode_base(reinterpret_cast<const char*>(vec.data()),
+                vec.size(), eEncodedType::Standard);
+    }
+
+    inline std::string decode_hex(const std::vector<uint8_t>& vec)
+    {
+        return (vec.empty())
+            ? std::string("")
+            : decode_base(reinterpret_cast<const char*>(vec.data()),
+                vec.size(), eEncodedType::Hex);
     }
 }  // namespace BaseXX::_32_
 
@@ -391,7 +646,7 @@ namespace _16_
 
     inline std::string encode(StringType str)
     {
-        return (str.size() == 0)
+        return (str.empty())
             ? std::string("")
             : encode_base(str.data(), str.size());
     }
@@ -414,7 +669,7 @@ namespace _16_
 
     inline std::string decode(StringType str)
     {
-        return (str.size() == 0)
+        return (str.empty())
             ? std::string("")
             : decode_base(str.data(), str.size());
     }
@@ -428,7 +683,7 @@ namespace _16_
 
     inline std::string decode(const std::vector<uint8_t>& vec)
     {
-        return (vec.size() == 0)
+        return (vec.empty())
             ? std::string("")
             : decode_base(
                 reinterpret_cast<const char*>(vec.data()), vec.size());
