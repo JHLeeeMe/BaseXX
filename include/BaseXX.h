@@ -25,6 +25,13 @@ namespace BaseXX
     using StringType = const std::string&;
 #endif  // __cplusplus >= 201703L
 
+    enum class eEncodedType
+    {
+        Standard = 0,
+        URLSafe,
+        Hex,
+    };
+
 namespace _64_
 {
     /// The Base 64 Alphabet Table
@@ -61,23 +68,28 @@ namespace _64_
         std::string encoded{};
         encoded.reserve(data_len);
 
-        uint8_t arr_3[3] = {0,};
-        uint8_t arr_4[4] = {0,};
+        uint8_t decoded_data_3[3] = {0,};
+        uint8_t encoded_data_4[4] = {0,};
 
         size_t i = 0;
         for (size_t pos = 0; pos < data_len; pos++)
         {
-            arr_3[i++] = data[pos];
+            decoded_data_3[i++] = data[pos];
             if (i == 3)
             {
-                arr_4[0] = (arr_3[0] & 0xFC) >> 2;
-                arr_4[1] = ((arr_3[0] & 0x03) << 4) + ((arr_3[1] & 0xF0) >> 4);
-                arr_4[2] = ((arr_3[1] & 0x0F) << 2) + ((arr_3[2] & 0xC0) >> 6);
-                arr_4[3] = arr_3[2] & 0x3F;
+                encoded_data_4[0] = (decoded_data_3[0] & 0xFC) >> 2;
+
+                encoded_data_4[1] = ((decoded_data_3[0] & 0x03) << 4) |
+                                    ((decoded_data_3[1] & 0xF0) >> 4);
+
+                encoded_data_4[2] = ((decoded_data_3[1] & 0x0F) << 2) |
+                                    ((decoded_data_3[2] & 0xC0) >> 6);
+
+                encoded_data_4[3] = decoded_data_3[2] & 0x3F;
 
                 for (size_t k = 0; k < 4; k++)
                 {
-                    encoded += table[arr_4[k]];
+                    encoded += table[encoded_data_4[k]];
                 }
 
                 i = 0;
@@ -86,15 +98,18 @@ namespace _64_
 
         if (i)  // i == 1 or i == 2
         {
-            memset(arr_3 + i, 0x00, 3 - i);
+            memset(decoded_data_3 + i, 0x00, 3 - i);
 
-            arr_4[0] = (arr_3[0] & 0xFC) >> 2;
-            arr_4[1] = ((arr_3[0] & 0x03) << 4) + ((arr_3[1] & 0xF0) >> 4);
-            arr_4[2] = (arr_3[1] & 0x0F) << 2;
+            encoded_data_4[0] = (decoded_data_3[0] & 0xFC) >> 2;
+
+            encoded_data_4[1] = ((decoded_data_3[0] & 0x03) << 4) |
+                                ((decoded_data_3[1] & 0xF0) >> 4);
+
+            encoded_data_4[2] = (decoded_data_3[1] & 0x0F) << 2;
 
             for (size_t j = 0; j < i + 1; j++)
             {
-                encoded += table[arr_4[j]];
+                encoded += table[encoded_data_4[j]];
             }
 
             size_t tmp = encoded.length() % 4;
@@ -162,12 +177,6 @@ namespace _64_
 
 namespace _32_
 {
-    enum class eEncodedType
-    {
-        Standard = 0,
-        Hex,
-    };
-
     /// The Base 32 Alphabet Table
     /// https://datatracker.ietf.org/doc/html/rfc4648#section-6
     ///
@@ -196,21 +205,22 @@ namespace _32_
             throw std::runtime_error("Invalid Base32 encoded length.");
         }
 
+        size_t idx = text_len - 1;
         size_t padding_cnt = 0;
-        for (size_t i = text_len - 1; i >= 0; i--)
+        while (true)
         {
-            if (encoded_text[i] != '=')
+            if (padding_cnt > 6)
+            {
+                return false;
+            }
+
+            if (encoded_text[idx] != '=')
             {
                 break;
             }
 
+            idx--;
             padding_cnt++;
-        }
-
-        // max padding count is 6
-        if (padding_cnt > 6)
-        {
-            return false;
         }
 
         if (encoded_type == eEncodedType::Standard)
@@ -275,27 +285,38 @@ namespace _32_
         std::string encoded{};
         encoded.reserve(data_len * 2);
 
-        uint8_t arr_5[5] = { 0, };
-        uint8_t arr_8[8] = { 0, };
+        uint8_t decoded_data_5[5] = { 0, };
+        uint8_t encoded_data_8[8] = { 0, };
 
         size_t i = 0;
         for (size_t pos = 0; pos < data_len; pos++)
         {
-            arr_5[i++] = data[pos];
+            decoded_data_5[i++] = data[pos];
             if (i == 5)
             {
-                arr_8[0] = (arr_5[0] & 0xF8) >> 3;
-                arr_8[1] = ((arr_5[0] & 0x07) << 2) + ((arr_5[1] & 0xC0) >> 6);
-                arr_8[2] = (arr_5[1] & 0x3E) >> 1;
-                arr_8[3] = ((arr_5[1] & 0x01) << 4) + ((arr_5[2] & 0xF0) >> 4);
-                arr_8[4] = ((arr_5[2] & 0x0F) << 1) + ((arr_5[3] & 0x80) >> 7);
-                arr_8[5] = (arr_5[3] & 0x7C) >> 2;
-                arr_8[6] = ((arr_5[3] & 0x03) << 3) + ((arr_5[4] & 0xE0) >> 5);
-                arr_8[7] = arr_5[4] & 0x1F;
+                encoded_data_8[0] = (decoded_data_5[0] & 0xF8) >> 3;
+
+                encoded_data_8[1] = ((decoded_data_5[0] & 0x07) << 2) |
+                                    ((decoded_data_5[1] & 0xC0) >> 6);
+
+                encoded_data_8[2] = (decoded_data_5[1] & 0x3E) >> 1;
+
+                encoded_data_8[3] = ((decoded_data_5[1] & 0x01) << 4) |
+                                    ((decoded_data_5[2] & 0xF0) >> 4);
+
+                encoded_data_8[4] = ((decoded_data_5[2] & 0x0F) << 1) |
+                                    ((decoded_data_5[3] & 0x80) >> 7);
+
+                encoded_data_8[5] = (decoded_data_5[3] & 0x7C) >> 2;
+
+                encoded_data_8[6] = ((decoded_data_5[3] & 0x03) << 3) |
+                                    ((decoded_data_5[4] & 0xE0) >> 5);
+
+                encoded_data_8[7] = decoded_data_5[4] & 0x1F;
 
                 for (size_t k = 0; k < 8; k++)
                 {
-                    encoded += table[arr_8[k]];
+                    encoded += table[encoded_data_8[k]];
                 }
                 
                 i = 0;
@@ -304,46 +325,40 @@ namespace _32_
 
         if (i)  // i == (1 ~ 4)
         {
-            memset(arr_5 + i, 0x00, 5 - i);
+            memset(decoded_data_5 + i, 0x00, 5 - i);
 
+            size_t remaining_bytes = 0;
             switch (i)
             {
             case 4:
-                arr_8[6] = (arr_5[3] & 0x03) << 3;
-                arr_8[5] = (arr_5[3] & 0x7C) >> 2;
+                encoded_data_8[6] = (decoded_data_5[3] & 0x03) << 3;
+                encoded_data_8[5] = (decoded_data_5[3] & 0x7C) >> 2;
+                remaining_bytes += 2;
                 FALLTHROUGH;
             case 3:
-                arr_8[4] = ((arr_5[2] & 0x0F) << 1) + ((arr_5[3] & 0x80) >> 7);
+                encoded_data_8[4] = ((decoded_data_5[2] & 0x0F) << 1) |
+                                    ((decoded_data_5[3] & 0x80) >> 7);
+                remaining_bytes++;
                 FALLTHROUGH;
             case 2:
-                arr_8[3] = ((arr_5[1] & 0x01) << 4) + ((arr_5[2] & 0xF0) >> 4);
-                arr_8[2] = (arr_5[1] & 0x3E) >> 1;
+                encoded_data_8[3] = ((decoded_data_5[1] & 0x01) << 4) |
+                                    ((decoded_data_5[2] & 0xF0) >> 4);
+                encoded_data_8[2] = (decoded_data_5[1] & 0x3E) >> 1;
+                remaining_bytes += 2;
                 FALLTHROUGH;
             case 1:
-                arr_8[1] = ((arr_5[0] & 0x07) << 2) + ((arr_5[1] & 0xC0) >> 6);
-                arr_8[0] = (arr_5[0] & 0xF8) >> 3;
+                encoded_data_8[1] = ((decoded_data_5[0] & 0x07) << 2) |
+                                    ((decoded_data_5[1] & 0xC0) >> 6);
+                encoded_data_8[0] = (decoded_data_5[0] & 0xF8) >> 3;
+                remaining_bytes += 2;
                 FALLTHROUGH;
             default:
                 break;
             }
 
-            size_t k = 0;
-            if (i == 1)
+            for (size_t idx = 0; idx < remaining_bytes; idx++)
             {
-                k = i + 1;
-            }
-            else if (i == 4)
-            {
-                k = i + 3;
-            }
-            else
-            {
-                k = i + 2;
-            }
-
-            for (size_t j = 0; j < k; j++)
-            {
-                encoded += table[arr_8[j]];
+                encoded += table[encoded_data_8[idx]];
             }
 
             size_t tmp = encoded.length() % 8;
@@ -377,8 +392,8 @@ namespace _32_
         std::string decoded{};
         decoded.reserve(data_len * 5 / 8);
 
-        uint8_t arr_8[8] = { 0, };
-        uint8_t arr_5[5] = { 0, };
+        uint8_t encoded_data_8[8] = { 0, };
+        uint8_t decoded_data_5[5] = { 0, };
 
         size_t i = 0;
         for (size_t pos = 0; pos < data_len; pos++)
@@ -388,89 +403,70 @@ namespace _32_
                 break;
             }
 
-            arr_8[i++] = decode_char_func(data[pos]);
+            encoded_data_8[i++] = decode_char_func(data[pos]);
 
             if (i == 8)
             {
-                arr_5[0] = (arr_8[0] << 3) + (arr_8[1] >> 2);
-                arr_5[1] = ((arr_8[1] & 0x03) << 6) +
-                    (arr_8[2] << 1) + (arr_8[3] >> 4);
-                arr_5[2] = ((arr_8[3] & 0x0F) << 4) + (arr_8[4] >> 1);
-                arr_5[3] = ((arr_8[4] & 0x01) << 7) +
-                    (arr_8[5] << 2) + (arr_8[6] >> 3);
-                arr_5[4] = ((arr_8[6] & 0x07) << 5) + arr_8[7];
+                decoded_data_5[0] = (encoded_data_8[0] << 3) |
+                                    (encoded_data_8[1] >> 2);
+
+                decoded_data_5[1] = ((encoded_data_8[1] & 0x03) << 6) |
+                                    (encoded_data_8[2] << 1) |
+                                    (encoded_data_8[3] >> 4);
+
+                decoded_data_5[2] = ((encoded_data_8[3] & 0x0F) << 4) |
+                                    (encoded_data_8[4] >> 1);
+
+                decoded_data_5[3] = ((encoded_data_8[4] & 0x01) << 7) |
+                                    (encoded_data_8[5] << 2) |
+                                    (encoded_data_8[6] >> 3);
+
+                decoded_data_5[4] = ((encoded_data_8[6] & 0x07) << 5) |
+                                    encoded_data_8[7];
 
                 for (size_t j = 0; j < 5; ++j)
                 {
-                    decoded.push_back(arr_5[j]);
+                    decoded.push_back(decoded_data_5[j]);
                 }
 
                 i = 0;
             }
         }
 
-        if (i)  // i == (1 ~ 7)
+        if (i)  // i == (2 || 4 || 5 || 7)
         {
-            /*
-            switch (i)
-            {
-            case 2: // +1 byte
-                arr_5[0] = (arr_8[0] << 3) | (arr_8[1] >> 2);
-                decoded.push_back(arr_5[0]);
-                break;
-            case 4: // +2 bytes
-                arr_5[0] = (arr_8[0] << 3) | (arr_8[1] >> 2);
-                arr_5[1] = ((arr_8[1] & 0x03) << 6) | (arr_8[2] << 1) | (arr_8[3] >> 4);
-                decoded.push_back(arr_5[0]);
-                decoded.push_back(arr_5[1]);
-                break;
-            case 5: // +2 bytes, 마지막 비트는 무시
-                arr_5[0] = (arr_8[0] << 3) | (arr_8[1] >> 2);
-                arr_5[1] = ((arr_8[1] & 0x03) << 6) | (arr_8[2] << 1) | (arr_8[3] >> 4);
-                arr_5[2] = ((arr_8[3] & 0x0F) << 4) | (arr_8[4] >> 1);
-                decoded.push_back(arr_5[0]);
-                decoded.push_back(arr_5[1]);
-                decoded.push_back(arr_5[2]);
-                break;
-            case 7: // +4 bytes, 마지막 비트는 무시
-                arr_5[0] = (arr_8[0] << 3) | (arr_8[1] >> 2);
-                arr_5[1] = ((arr_8[1] & 0x03) << 6) | (arr_8[2] << 1) | (arr_8[3] >> 4);
-                arr_5[2] = ((arr_8[3] & 0x0F) << 4) | (arr_8[4] >> 1);
-                arr_5[3] = ((arr_8[4] & 0x01) << 7) | (arr_8[5] << 2) | (arr_8[6] >> 3);
-                decoded.push_back(arr_5[0]);
-                decoded.push_back(arr_5[1]);
-                decoded.push_back(arr_5[2]);
-                decoded.push_back(arr_5[3]);
-                break;
-            }
-            */
-
-            size_t k = 0;
+            size_t remaining_bytes = 0;
             switch (i)
             {
             case 7:
-                arr_5[3] = ((arr_8[4] & 0x01) << 7) | (arr_8[5] << 2) | (arr_8[6] >> 3);
-                k++;
+                decoded_data_5[3] = ((encoded_data_8[4] & 0x01) << 7) |
+                                    (encoded_data_8[5] << 2) |
+                                    (encoded_data_8[6] >> 3);
+                remaining_bytes++;
                 FALLTHROUGH;
             case 5:
-                arr_5[2] = ((arr_8[3] & 0x0F) << 4) | (arr_8[4] >> 1);
-                k++;
+                decoded_data_5[2] = ((encoded_data_8[3] & 0x0F) << 4) |
+                                    (encoded_data_8[4] >> 1);
+                remaining_bytes++;
                 FALLTHROUGH;
             case 4:
-                arr_5[1] = ((arr_8[1] & 0x03) << 6) | (arr_8[2] << 1) | (arr_8[3] >> 4);
-                k++;
+                decoded_data_5[1] = ((encoded_data_8[1] & 0x03) << 6) |
+                                    (encoded_data_8[2] << 1) |
+                                    (encoded_data_8[3] >> 4);
+                remaining_bytes++;
                 FALLTHROUGH;
             case 2:
-                arr_5[0] = (arr_8[0] << 3) | (arr_8[1] >> 2);
-                k++;
+                decoded_data_5[0] = (encoded_data_8[0] << 3) |
+                                    (encoded_data_8[1] >> 2);
+                remaining_bytes++;
                 FALLTHROUGH;
             default:
                 break;
             }
 
-            for (size_t idx = 0; idx < k; idx++)
+            for (size_t idx = 0; idx < remaining_bytes; idx++)
             {
-                decoded.push_back(arr_5[idx]);
+                decoded.push_back(decoded_data_5[idx]);
             }
         }
 

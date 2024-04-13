@@ -157,7 +157,6 @@ TEST(Base32, encode_hex)
 
         std::vector<uint8_t> vec_3{ 0xed, 0x95, 0x9c };  // '한'
         ASSERT_EQ("TMAPO===", base32::encode_hex(vec_3));
-
     }
 }  // TEST(Base32, encode_hex)
 
@@ -197,6 +196,11 @@ TEST(Base32, decode)
 
         std::vector<uint8_t> vec_3{ '5', 'W', 'K', 'Z', 'Y', '=', '=', '=' };  // '한'
         ASSERT_EQ("한", base32::decode(vec_3));
+    }
+
+    {  // exception
+        ASSERT_THROW(base32::decode("========"), std::runtime_error);
+        ASSERT_THROW(base32::decode("        "), std::runtime_error);
     }
 }  // TEST(Base32, decode)
 
