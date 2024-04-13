@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 #if __cplusplus >= 201703L
-#    include <string_view>
+    #include <string_view>
 #endif  // __cplusplus >= 201703L
 
 #define FALLTHROUGH do{} while (false)
@@ -25,11 +25,19 @@ namespace BaseXX
     using StringType = const std::string&;
 #endif  // __cplusplus >= 201703L
 
+    enum class eResultCode
+    {
+        Success = 0,
+        
+        InvalidBase = 10,
+        InvalidLength = InvalidBase + 1,  // 11
+    };
+
     enum class eEncodedType
     {
         Standard = 0,
-        URLSafe,
-        Hex,
+        URLSafe,       // 1
+        Hex,           // 2
     };
 
 namespace _64_
@@ -62,11 +70,97 @@ namespace _64_
         '4', '5', '6', '7', '8', '9', '-', '_',  // 56 ~ 63
     };
 
+    inline bool is_valid_encoded_text(const char* encoded_text,
+        const size_t text_len, eEncodedType encoded_type)
+    {
+        if (text_len % 4 != 0)
+        {
+            throw std::runtime_error("Invalid Base64 encoded length.");
+        }
+
+        size_t idx = text_len - 1;
+        size_t padding_cnt = 0;
+        while (true)
+        {
+            if (padding_cnt > 2)
+            {
+                return false;
+            }
+
+            if (encoded_text[idx] != '=')
+            {
+                break;
+            }
+
+            idx--;
+            padding_cnt++;
+        }
+
+        /////////////////////  padding check and return ???
+
+        if (encoded_type == eEncodedType::Standard)
+        {
+            for (size_t i = 0; i < text_len - padding_cnt; i++)
+            {
+                const char c = encoded_text[i];
+                if (!('A' <= c && c <= 'Z') &&
+                    !('a' <= c && c <= 'z') &&
+                    !('0' <= c && c <= '9') &&
+                    !(c == '+' || c == '/'))
+                {
+                    return false;
+                }
+            }
+        }
+        else if (encoded_type == eEncodedType::URLSafe)
+        {
+            for (size_t i = 0; i < text_len - padding_cnt; i++)
+            {
+                const char c = encoded_text[i];
+                if (!('A' <= c && c <= 'Z') &&
+                    !('a' <= c && c <= 'z') &&
+                    !('0' <= c && c <= '9') &&
+                    !(c == '-' || c == '_'))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    inline const uint8_t decode_char(const char c)
+    {
+        if (c >= 'A' && c <= 'Z')
+        {
+            return c - 'A';
+        }
+        else if (c >= 'a' && c <= 'z')
+        {
+            return 26 + (c - 'a');
+        }
+        else if (c >= '0' && c <= '9')
+        {
+            return 52 + (c - '0');
+        }
+        else if (c == '+' || c == '-')
+        {
+            return 62;
+        }
+        else if (c == '/' || c == '_')
+        {
+            return 63;
+        }
+
+        throw std::runtime_error("Invalid character in Base64 Encoding.");
+    }
+    
     inline std::string encode_base(const char* data,
         const size_t data_len, const uint8_t* table = encoding_table)
     {
         std::string encoded{};
-        encoded.reserve(data_len);
+        encoded.reserve(data_len * 4 / 3);
 
         uint8_t decoded_data_3[3] = {0,};
         uint8_t encoded_data_4[4] = {0,};
@@ -120,6 +214,17 @@ namespace _64_
         }
 
         return encoded;
+    }
+
+    inline std::string decode_base(const char* data,
+        const size_t data_len, eEncodedType encoded_type)
+    {
+        if (!is_valid_encoded_text(data, data_len, encoded_type))
+        {
+            throw std::runtime_error("");
+        }
+
+        return "";
     }
 
 
