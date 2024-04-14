@@ -221,10 +221,72 @@ namespace _64_
     {
         if (!is_valid_encoded_text(data, data_len, encoded_type))
         {
-            throw std::runtime_error("");
+            throw std::runtime_error("Invalid Base64[-Urlsafe] encoded text.");
         }
 
-        return "";
+        std::function<const uint8_t(const char)> decode_char_func{ &decode_char };
+
+        std::string decoded{};
+        decoded.reserve(data_len * 3 / 4);
+
+        uint8_t encoded_data_4[4] = { 0, };
+        uint8_t decoded_data_3[3] = { 0, };
+
+        size_t i = 0;
+        for (size_t pos = 0; pos < data_len; pos++)
+        {
+            if (data[pos] == '=')
+            {
+                break;
+            }
+
+            encoded_data_4[i++] = decode_char_func(data[pos]);
+
+            if (i == 4)
+            {
+                decoded_data_3[0] = (encoded_data_4[0] << 2) |
+                                    (encoded_data_4[1] >> 4);
+
+                decoded_data_3[1] = ((encoded_data_4[1] & 0x0F) << 4) |
+                                    (encoded_data_4[2] >> 2);
+
+                decoded_data_3[2] = ((encoded_data_4[2] & 0x03) << 6) |
+                                    encoded_data_4[3];
+
+                for (size_t k = 0; k < 3; k++)
+                {
+                    decoded.push_back(decoded_data_3[k]);
+                }
+
+                i = 0;
+            }
+        }
+
+        if (i)  // i == (2 or 3)
+        {
+            memset(encoded_data_4 + i, 0x00, 4 - i);
+
+            switch (i)
+            {
+            case 3:
+                decoded_data_3[1] = ((encoded_data_4[1] & 0x0F) << 4) |
+                                    (encoded_data_4[2] >> 2);
+                FALLTHROUGH;
+            case 2:
+                decoded_data_3[0] = (encoded_data_4[0] << 2) |
+                                    (encoded_data_4[1] >> 4);
+                FALLTHROUGH;
+            default:
+                break;
+            }
+
+            for (int j = 0; j < (i - 1); ++j)
+            {
+                decoded += decoded_data_3[j];
+            }
+        }
+
+        return decoded;
     }
 
 
@@ -277,6 +339,53 @@ namespace _64_
             ? std::string("")
             : encode_base(reinterpret_cast<const char*>(vec.data()),
                 vec.size(), urlsafe_encoding_table);
+    }
+
+    inline std::string decode(StringType str = "")
+    {
+        return (str.empty())
+            ? std::string("")
+            : decode_base(str.data(), str.size(), eEncodedType::Standard);
+    }
+
+    inline std::string decode_urlsafe(StringType str = "")
+    {
+        return (str.empty())
+            ? std::string("")
+            : decode_base(str.data(), str.size(), eEncodedType::URLSafe);
+    }
+
+    inline std::string decode(const std::initializer_list<uint8_t>& list)
+    {
+        return (list.size() == 0)
+            ? std::string("")
+            : decode_base(reinterpret_cast<const char*>(list.begin()),
+                list.size(), eEncodedType::Standard);
+    }
+
+    inline std::string decode_urlsafe(
+        const std::initializer_list<uint8_t>& list)
+    {
+        return (list.size() == 0)
+            ? std::string("")
+            : decode_base(reinterpret_cast<const char*>(list.begin()),
+                list.size(), eEncodedType::URLSafe);
+    }
+
+    inline std::string decode(const std::vector<uint8_t>& vec)
+    {
+        return (vec.empty())
+            ? std::string("")
+            : decode_base(reinterpret_cast<const char*>(vec.data()),
+                vec.size(), eEncodedType::Standard);
+    }
+
+    inline std::string decode_urlsafe(const std::vector<uint8_t>& vec)
+    {
+        return (vec.empty())
+            ? std::string("")
+            : decode_base(reinterpret_cast<const char*>(vec.data()),
+                vec.size(), eEncodedType::URLSafe);
     }
 }  // namespace BaseXX::_64_
 
