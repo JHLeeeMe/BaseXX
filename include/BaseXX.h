@@ -29,8 +29,8 @@ namespace BaseXX
     {
         Success = 0,
         
-        InvalidBase = 10,
-        InvalidLength = InvalidBase + 1,  // 11
+        InvalidBase      = 10,
+        InvalidLength    = InvalidBase + 1,  // 11
         InvalidCharactor = InvalidBase + 2,  // 12
     };
 
