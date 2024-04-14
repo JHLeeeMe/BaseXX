@@ -82,6 +82,62 @@ TEST(Base64, encode_urlsafe)
     }
 }  // TEST(Base64, encode_urlsafe)
 
+TEST(Base64, decode)
+{
+    ASSERT_EQ("", base64::decode(""));
+    ASSERT_EQ("", base64::decode(std::string()));
+    ASSERT_EQ("", base64::decode({}));
+
+    ASSERT_EQ("\\", base64::decode("XA=="));
+    ASSERT_EQ("\\n", base64::decode("XG4="));
+    ASSERT_EQ("\\n\\0", base64::decode("XG5cMA=="));
+    ASSERT_EQ(" ", base64::decode("IA=="));
+    ASSERT_EQ("`", base64::decode("YA=="));
+
+    ASSERT_EQ("한글", base64::decode("7ZWc6riA"));
+    ASSERT_EQ("漢字", base64::decode("5ryi5a2X"));
+    ASSERT_EQ("汉字", base64::decode("5rGJ5a2X"));
+    ASSERT_EQ("ひらがな", base64::decode("44Gy44KJ44GM44Gq"));
+    ASSERT_EQ("カタカナ", base64::decode("44Kr44K/44Kr44OK"));
+
+    {  // initializer_list<uint8_t>
+        ASSERT_EQ("한", base64::decode({ '7', 'Z', 'W', 'c' }));  // '한'
+        ASSERT_EQ("한", base64::decode({ "7ZWc" }));  // '한'
+        ASSERT_EQ("\xED\x95\x9C", base64::decode({ "7ZWc" }));
+        ASSERT_EQ(" ", base64::decode({ 'I', 'A', '=', '=' }));
+        ASSERT_EQ("\xff\xff\xff", base64::decode({"////"}));
+    }
+
+    {  // std::vector<uint8_t>
+        std::vector<uint8_t> vec_empty{};
+        ASSERT_EQ("", base64::decode(vec_empty));
+
+        std::vector<uint8_t> vec_1{};
+        vec_1.reserve(128);
+        ASSERT_EQ("", base64::decode(vec_1));
+
+        std::vector<uint8_t> vec_2{ '7', 'Z', 'W', 'c' };  // '한'
+        ASSERT_EQ("한", base64::decode(vec_2));
+
+        std::vector<uint8_t> vec_3{ 'Y', 'U', 'E', '=' };  // "aA"
+        ASSERT_EQ("aA", base64::decode(vec_3));
+    }
+
+    {  // multiple encode & decode
+        using namespace ::BaseXX::_64_;
+        ASSERT_EQ("https://www.base64decode.org",
+            decode(decode(
+            encode(encode(
+            decode(
+            encode(
+            decode("aHR0cHM6Ly93d3cuYmFzZTY0ZGVjb2RlLm9yZw==")))))))
+        );
+    }
+    {  // exception
+        ASSERT_THROW(base64::decode("====="), std::runtime_error);
+    }
+}  // TEST(Base64, decode)
+
 TEST(Base32, encode)
 {
     ASSERT_EQ("", base32::encode(""));
