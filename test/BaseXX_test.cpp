@@ -135,6 +135,7 @@ TEST(Base64, decode)
     }
     {  // exception
         ASSERT_THROW(base64::decode("====="), std::runtime_error);
+        ASSERT_THROW(base64::decode_urlsafe({"_/_/"}), std::runtime_error);
     }
 }  // TEST(Base64, decode)
 
