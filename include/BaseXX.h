@@ -31,6 +31,7 @@ namespace BaseXX
         
         InvalidBase = 10,
         InvalidLength = InvalidBase + 1,  // 11
+        InvalidCharactor = InvalidBase + 2,  // 12
     };
 
     enum class eEncodedType
@@ -39,6 +40,30 @@ namespace BaseXX
         URLSafe,       // 1
         Hex,           // 2
     };
+
+    inline void throwRuntimeError(eResultCode code, StringType err_msg = "")
+    {
+        if (!err_msg.empty())
+        {
+            throw std::runtime_error(err_msg);
+        }
+
+        std::string error_message{};
+        switch (code)
+        {
+        case eResultCode::InvalidLength:
+            error_message = "Invalid Base64[-Urlsafe] encoded text length.";
+            break;
+        case eResultCode::InvalidCharactor:
+            error_message = "Invalid character in Base64[-Urlsafe] Encoding.";
+            break;
+        default:
+            error_message = "Invalid Base64[-Urlsafe] encoded text.";
+            break;
+        }
+
+        throw std::runtime_error(error_message);
+    }
 
 namespace _64_
 {
@@ -70,12 +95,12 @@ namespace _64_
         '4', '5', '6', '7', '8', '9', '-', '_',  // 56 ~ 63
     };
 
-    inline bool is_valid_encoded_text(const char* encoded_text,
-        const size_t text_len, eEncodedType encoded_type)
+    inline eResultCode check_format(
+        const char* encoded_text, const size_t text_len)
     {
         if (text_len % 4 != 0)
         {
-            throw std::runtime_error("Invalid Base64 encoded length.");
+            return eResultCode::InvalidLength;
         }
 
         size_t idx = text_len - 1;
@@ -84,7 +109,7 @@ namespace _64_
         {
             if (padding_cnt > 2)
             {
-                return false;
+                return eResultCode::InvalidCharactor;
             }
 
             if (encoded_text[idx] != '=')
@@ -96,38 +121,7 @@ namespace _64_
             padding_cnt++;
         }
 
-        /////////////////////  padding check and return ???
-
-        if (encoded_type == eEncodedType::Standard)
-        {
-            for (size_t i = 0; i < text_len - padding_cnt; i++)
-            {
-                const char c = encoded_text[i];
-                if (!('A' <= c && c <= 'Z') &&
-                    !('a' <= c && c <= 'z') &&
-                    !('0' <= c && c <= '9') &&
-                    !(c == '+' || c == '/'))
-                {
-                    return false;
-                }
-            }
-        }
-        else if (encoded_type == eEncodedType::URLSafe)
-        {
-            for (size_t i = 0; i < text_len - padding_cnt; i++)
-            {
-                const char c = encoded_text[i];
-                if (!('A' <= c && c <= 'Z') &&
-                    !('a' <= c && c <= 'z') &&
-                    !('0' <= c && c <= '9') &&
-                    !(c == '-' || c == '_'))
-                {
-                    return false;
-                }
-            }
-        }
-
-        return true;
+        return eResultCode::Success;
     }
 
     inline const uint8_t decode_char(const char c)
@@ -144,16 +138,42 @@ namespace _64_
         {
             return 52 + (c - '0');
         }
-        else if (c == '+' || c == '-')
+        else if (c == '+')
         {
             return 62;
         }
-        else if (c == '/' || c == '_')
+        else if (c == '/')
         {
             return 63;
         }
 
         throw std::runtime_error("Invalid character in Base64 Encoding.");
+    }
+
+    inline const uint8_t urlsafe_decode_char(const char c)
+    {
+        if (c >= 'A' && c <= 'Z')
+        {
+            return c - 'A';
+        }
+        else if (c >= 'a' && c <= 'z')
+        {
+            return 26 + (c - 'a');
+        }
+        else if (c >= '0' && c <= '9')
+        {
+            return 52 + (c - '0');
+        }
+        else if (c == '-')
+        {
+            return 62;
+        }
+        else if (c == '_')
+        {
+            return 63;
+        }
+
+        throw std::runtime_error("Invalid character in Base64-Urlsafe Encoding.");
     }
     
     inline std::string encode_base(const char* data,
@@ -219,12 +239,21 @@ namespace _64_
     inline std::string decode_base(const char* data,
         const size_t data_len, eEncodedType encoded_type)
     {
-        if (!is_valid_encoded_text(data, data_len, encoded_type))
+        eResultCode code = check_format(data, data_len);
+        if (code != eResultCode::Success)
         {
-            throw std::runtime_error("Invalid Base64[-Urlsafe] encoded text.");
+             throwRuntimeError(code);
         }
 
-        std::function<const uint8_t(const char)> decode_char_func{ &decode_char };
+        std::function<const uint8_t(const char)> decode_char_func{};
+        if (encoded_type == eEncodedType::Standard)
+        {
+            decode_char_func = &decode_char;
+        }
+        else if (encoded_type == eEncodedType::URLSafe)
+        {
+            decode_char_func = &urlsafe_decode_char;
+        }
 
         std::string decoded{};
         decoded.reserve(data_len * 3 / 4);
