@@ -7,10 +7,12 @@
 
 
 #include <cstdint>  // uint8_t
+#include <functional>  // std::function
+#include <stdexcept>  // std::runtime_error
 #include <string>
 #include <vector>
 #if __cplusplus >= 201703L
-#    include <string_view>
+    #include <string_view>
 #endif  // __cplusplus >= 201703L
 
 #define FALLTHROUGH do{} while (false)
@@ -19,9 +21,61 @@ namespace BaseXX
 {
 #if __cplusplus >= 201703L
     using StringType = std::string_view;
-#else
+#else  // __cplusplus >= 201703L
     using StringType = const std::string&;
 #endif  // __cplusplus >= 201703L
+
+    enum class eResultCode
+    {
+        Success = 0,
+        
+        InvalidBase         = 10,
+        InvalidLength       = InvalidBase + 1,  // 11
+        InvalidCharactor    = InvalidBase + 2,  // 12
+        InvalidEncodedType  = InvalidBase + 3,  // 13
+        InvalidPaddingCount = InvalidBase + 4,  // 14
+    };
+
+    enum class eEncodedType
+    {
+        Standard = 0,
+        URLSafe,       // 1
+        Hex,           // 2
+    };
+
+    [[noreturn]]
+    inline void throwRuntimeError(eResultCode code, StringType caller_info, StringType msg = "")
+    {
+        std::string error_message{ "Error occurred in " + caller_info + ":\n\t" };
+
+        if (!msg.empty())
+        {
+            error_message += msg;
+        }
+        else
+        {
+            switch (code)
+            {
+            case eResultCode::InvalidLength:
+                error_message += "Invalid encoded text length.";
+                break;
+            case eResultCode::InvalidPaddingCount:
+                error_message += "Invalid encoded padding count.";
+                break;
+            case eResultCode::InvalidCharactor:
+                error_message += "Invalid encoded character.";
+                break;
+            case eResultCode::InvalidEncodedType:
+                error_message += "Invalid encoded type.";
+                break;
+            default:
+                error_message += "Invalid encoded text.";
+                break;
+            }
+        }
+
+        throw std::runtime_error(error_message);
+    }
 
 namespace _64_
 {
@@ -53,27 +107,115 @@ namespace _64_
         '4', '5', '6', '7', '8', '9', '-', '_',  // 56 ~ 63
     };
 
+    inline eResultCode check_format(
+        const char* encoded_text, const size_t text_len)
+    {
+        if (text_len % 4 != 0)
+        {
+            return eResultCode::InvalidLength;
+        }
+
+        size_t idx = text_len - 1;
+        size_t padding_cnt = 0;
+        while (true)
+        {
+            if (padding_cnt > 2)
+            {
+                return eResultCode::InvalidPaddingCount;
+            }
+
+            if (encoded_text[idx] != '=')
+            {
+                break;
+            }
+
+            idx--;
+            padding_cnt++;
+        }
+
+        return eResultCode::Success;
+    }
+
+    inline const uint8_t decode_char(const char c)
+    {
+        if (c >= 'A' && c <= 'Z')
+        {
+            return c - 'A';
+        }
+        else if (c >= 'a' && c <= 'z')
+        {
+            return 26 + (c - 'a');
+        }
+        else if (c >= '0' && c <= '9')
+        {
+            return 52 + (c - '0');
+        }
+        else if (c == '+')
+        {
+            return 62;
+        }
+        else if (c == '/')
+        {
+            return 63;
+        }
+
+        throwRuntimeError(eResultCode::InvalidCharactor, __FUNCTION__);
+    }
+
+    inline const uint8_t urlsafe_decode_char(const char c)
+    {
+        if (c >= 'A' && c <= 'Z')
+        {
+            return c - 'A';
+        }
+        else if (c >= 'a' && c <= 'z')
+        {
+            return 26 + (c - 'a');
+        }
+        else if (c >= '0' && c <= '9')
+        {
+            return 52 + (c - '0');
+        }
+        else if (c == '-')
+        {
+            return 62;
+        }
+        else if (c == '_')
+        {
+            return 63;
+        }
+
+        throwRuntimeError(eResultCode::InvalidCharactor, __FUNCTION__);
+    }
+    
     inline std::string encode_base(const char* data,
         const size_t data_len, const uint8_t* table = encoding_table)
     {
         std::string encoded{};
-        uint8_t arr_3[3] = {0,};
-        uint8_t arr_4[4] = {0,};
+        encoded.reserve(data_len * 4 / 3);
+
+        uint8_t decoded_data_3[3] = {0,};
+        uint8_t encoded_data_4[4] = {0,};
 
         size_t i = 0;
         for (size_t pos = 0; pos < data_len; pos++)
         {
-            arr_3[i++] = data[pos];
+            decoded_data_3[i++] = data[pos];
             if (i == 3)
             {
-                arr_4[0] = (arr_3[0] & 0xFC) >> 2;
-                arr_4[1] = ((arr_3[0] & 0x03) << 4) + ((arr_3[1] & 0xF0) >> 4);
-                arr_4[2] = ((arr_3[1] & 0x0F) << 2) + ((arr_3[2] & 0xC0) >> 6);
-                arr_4[3] = arr_3[2] & 0x3F;
+                encoded_data_4[0] = (decoded_data_3[0] & 0xFC) >> 2;
 
-                for (size_t k = 0; k < 4; k++)
+                encoded_data_4[1] = ((decoded_data_3[0] & 0x03) << 4) |
+                                    ((decoded_data_3[1] & 0xF0) >> 4);
+
+                encoded_data_4[2] = ((decoded_data_3[1] & 0x0F) << 2) |
+                                    ((decoded_data_3[2] & 0xC0) >> 6);
+
+                encoded_data_4[3] = decoded_data_3[2] & 0x3F;
+
+                for (const auto& c : encoded_data_4)
                 {
-                    encoded += table[arr_4[k]];
+                    encoded.push_back(table[c]);
                 }
 
                 i = 0;
@@ -82,38 +224,128 @@ namespace _64_
 
         if (i)  // i == 1 or i == 2
         {
-            memset(arr_3 + i, 0x00, 3 - i);
+            memset(decoded_data_3 + i, 0x00, 3 - i);
 
-            arr_4[0] = (arr_3[0] & 0xFC) >> 2;
-            arr_4[1] = ((arr_3[0] & 0x03) << 4) + ((arr_3[1] & 0xF0) >> 4);
-            arr_4[2] = (arr_3[1] & 0x0F) << 2;
+            switch (i)
+            {
+            case 2:
+                encoded_data_4[2] = (decoded_data_3[1] & 0x0F) << 2;
+                FALLTHROUGH;
+            case 1:
+                encoded_data_4[1] = ((decoded_data_3[0] & 0x03) << 4) |
+                                    ((decoded_data_3[1] & 0xF0) >> 4);
+                encoded_data_4[0] = (decoded_data_3[0] & 0xFC) >> 2;
+                FALLTHROUGH;
+            default:
+                break;
+            }
 
             for (size_t j = 0; j < i + 1; j++)
             {
-                encoded += table[arr_4[j]];
+                encoded.push_back(table[encoded_data_4[j]]);
             }
 
-            size_t tmp = encoded.length() % 4;
-            while (tmp++ != 4)
+            size_t padding_cnt = 4 - (encoded.length() % 4);
+            while (padding_cnt-- != 0)
             {
-                encoded += '=';
+                encoded.push_back('=');
             }
         }
 
         return encoded;
     }
 
-    /***************************************************************************
-    * Helper Functions
-    *   inline std::string encode(StringType)
-    *   inline std::string encode_urlsafe(StringType)
-    * 
-    *   inline std::string encode(const std::initializer_list<uint8_t>&)
-    *   inline std::string encode_urlsafe(const std::initializer_list<uint8_t>&)
-    * 
-    *   inline std::string encode(const std::vector<uint8_t>&)
-    *   inline std::string encode_urlsafe(const std::vector<uint8_t>&)
-    ***************************************************************************/
+    inline std::string decode_base(const char* data,
+        const size_t data_len, eEncodedType encoded_type)
+    {
+        eResultCode code = check_format(data, data_len);
+        if (code != eResultCode::Success)
+        {
+             throwRuntimeError(code, __FUNCTION__);
+        }
+
+        std::function<const uint8_t(const char)> decode_char_func{};
+        if (encoded_type == eEncodedType::Standard)
+        {
+            decode_char_func = &decode_char;
+        }
+        else if (encoded_type == eEncodedType::URLSafe)
+        {
+            decode_char_func = &urlsafe_decode_char;
+        }
+        else
+        {
+            throwRuntimeError(eResultCode::InvalidEncodedType, __FUNCTION__);
+        }
+
+        std::string decoded{};
+        decoded.reserve(data_len * 3 / 4);
+
+        uint8_t encoded_data_4[4] = { 0, };
+        uint8_t decoded_data_3[3] = { 0, };
+
+        size_t i = 0;
+        for (size_t pos = 0; pos < data_len; pos++)
+        {
+            if (data[pos] == '=')
+            {
+                break;
+            }
+
+            encoded_data_4[i++] = decode_char_func(data[pos]);
+
+            if (i == 4)
+            {
+                decoded_data_3[0] = ((encoded_data_4[0] & 0x3F) << 2) |
+                                    ((encoded_data_4[1] & 0x30) >> 4);
+
+                decoded_data_3[1] = ((encoded_data_4[1] & 0x0F) << 4) |
+                                    ((encoded_data_4[2] & 0x3C) >> 2);
+
+                decoded_data_3[2] = ((encoded_data_4[2] & 0x03) << 6) |
+                                    encoded_data_4[3];
+
+                for (const auto& c : decoded_data_3)
+                {
+                    decoded.push_back(c);
+                }
+
+                i = 0;
+            }
+        }
+
+        if (i)  // i == (2 or 3)
+        {
+            memset(encoded_data_4 + i, 0x00, 4 - i);
+
+            switch (i)
+            {
+            case 3:
+                decoded_data_3[1] = ((encoded_data_4[1] & 0x0F) << 4) |
+                                    ((encoded_data_4[2] & 0x3C) >> 2);
+                FALLTHROUGH;
+            case 2:
+                decoded_data_3[0] = ((encoded_data_4[0] & 0x3F) << 2) |
+                                    ((encoded_data_4[1] & 0x30) >> 4);
+                FALLTHROUGH;
+            default:
+                break;
+            }
+
+            for (int j = 0; j < (i - 1); ++j)
+            {
+                decoded.push_back(decoded_data_3[j]);
+            }
+        }
+
+        return decoded;
+    }
+
+
+    /// ========================================================================
+    /// Helper Functions
+    /// ========================================================================
+
     inline std::string encode(StringType str = "")
     {
         return (str.empty())
@@ -160,6 +392,53 @@ namespace _64_
             : encode_base(reinterpret_cast<const char*>(vec.data()),
                 vec.size(), urlsafe_encoding_table);
     }
+
+    inline std::string decode(StringType str = "")
+    {
+        return (str.empty())
+            ? std::string("")
+            : decode_base(str.data(), str.size(), eEncodedType::Standard);
+    }
+
+    inline std::string decode_urlsafe(StringType str = "")
+    {
+        return (str.empty())
+            ? std::string("")
+            : decode_base(str.data(), str.size(), eEncodedType::URLSafe);
+    }
+
+    inline std::string decode(const std::initializer_list<uint8_t>& list)
+    {
+        return (list.size() == 0)
+            ? std::string("")
+            : decode_base(reinterpret_cast<const char*>(list.begin()),
+                list.size(), eEncodedType::Standard);
+    }
+
+    inline std::string decode_urlsafe(
+        const std::initializer_list<uint8_t>& list)
+    {
+        return (list.size() == 0)
+            ? std::string("")
+            : decode_base(reinterpret_cast<const char*>(list.begin()),
+                list.size(), eEncodedType::URLSafe);
+    }
+
+    inline std::string decode(const std::vector<uint8_t>& vec)
+    {
+        return (vec.empty())
+            ? std::string("")
+            : decode_base(reinterpret_cast<const char*>(vec.data()),
+                vec.size(), eEncodedType::Standard);
+    }
+
+    inline std::string decode_urlsafe(const std::vector<uint8_t>& vec)
+    {
+        return (vec.empty())
+            ? std::string("")
+            : decode_base(reinterpret_cast<const char*>(vec.data()),
+                vec.size(), eEncodedType::URLSafe);
+    }
 }  // namespace BaseXX::_64_
 
 namespace _32_
@@ -184,31 +463,100 @@ namespace _32_
         'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',  // 24 ~ 31
     };
 
+    inline eResultCode check_format(const char* encoded_text, const size_t text_len)
+    {
+        if (text_len % 8 != 0)
+        {
+            return eResultCode::InvalidLength;
+        }
+
+        size_t idx = text_len - 1;
+        size_t padding_cnt = 0;
+        while (true)
+        {
+            if (padding_cnt > 6)
+            {
+                return eResultCode::InvalidPaddingCount;
+            }
+
+            if (encoded_text[idx] != '=')
+            {
+                break;
+            }
+
+            idx--;
+            padding_cnt++;
+        }
+
+        return eResultCode::Success;
+    }
+
+    inline const uint8_t decode_char(const char c)
+    {
+        if (c >= 'A' && c <= 'Z')
+        {
+            return c - 'A';
+        }
+        else if (c >= '2' && c <= '7')
+        {
+            return 26 + (c - '2');
+        }
+
+        throwRuntimeError(eResultCode::InvalidCharactor, __FUNCTION__);
+    }
+
+    inline const uint8_t hex_decode_char(const char c)
+    {
+        if (c >= '0' && c <= '9')
+        {
+            return c - '0';
+        }
+        else if (c >= 'A' && c <= 'V')
+        {
+            return 10 + (c - 'A');
+        }
+
+        throwRuntimeError(eResultCode::InvalidCharactor, __FUNCTION__);
+    }
+
     inline std::string encode_base(const char* data,
         const size_t data_len, const uint8_t* table = encoding_table)
     {
         std::string encoded{};
-        uint8_t arr_5[5] = { 0, };
-        uint8_t arr_8[8] = { 0, };
+        encoded.reserve(data_len * 2);
+
+        uint8_t decoded_data_5[5] = { 0, };
+        uint8_t encoded_data_8[8] = { 0, };
 
         size_t i = 0;
         for (size_t pos = 0; pos < data_len; pos++)
         {
-            arr_5[i++] = data[pos];
+            decoded_data_5[i++] = data[pos];
             if (i == 5)
             {
-                arr_8[0] = (arr_5[0] & 0xF8) >> 3;
-                arr_8[1] = ((arr_5[0] & 0x07) << 2) + ((arr_5[1] & 0xC0) >> 6);
-                arr_8[2] = (arr_5[1] & 0x3E) >> 1;
-                arr_8[3] = ((arr_5[1] & 0x01) << 4) + ((arr_5[2] & 0xF0) >> 4);
-                arr_8[4] = ((arr_5[2] & 0x0F) << 1) + ((arr_5[3] & 0x80) >> 7);
-                arr_8[5] = (arr_5[3] & 0x7C) >> 2;
-                arr_8[6] = ((arr_5[3] & 0x03) << 3) + ((arr_5[4] & 0xE0) >> 5);
-                arr_8[7] = arr_5[4] & 0x1F;
+                encoded_data_8[0] = (decoded_data_5[0] & 0xF8) >> 3;
 
-                for (size_t k = 0; k < 8; k++)
+                encoded_data_8[1] = ((decoded_data_5[0] & 0x07) << 2) |
+                                    ((decoded_data_5[1] & 0xC0) >> 6);
+
+                encoded_data_8[2] = (decoded_data_5[1] & 0x3E) >> 1;
+
+                encoded_data_8[3] = ((decoded_data_5[1] & 0x01) << 4) |
+                                    ((decoded_data_5[2] & 0xF0) >> 4);
+
+                encoded_data_8[4] = ((decoded_data_5[2] & 0x0F) << 1) |
+                                    ((decoded_data_5[3] & 0x80) >> 7);
+
+                encoded_data_8[5] = (decoded_data_5[3] & 0x7C) >> 2;
+
+                encoded_data_8[6] = ((decoded_data_5[3] & 0x03) << 3) |
+                                    ((decoded_data_5[4] & 0xE0) >> 5);
+
+                encoded_data_8[7] = decoded_data_5[4] & 0x1F;
+
+                for (const auto& c : encoded_data_8)
                 {
-                    encoded += table[arr_8[k]];
+                    encoded.push_back(table[c]);
                 }
                 
                 i = 0;
@@ -217,69 +565,160 @@ namespace _32_
 
         if (i)  // i == (1 ~ 4)
         {
-            memset(arr_5 + i, 0x00, 5 - i);
+            memset(decoded_data_5 + i, 0x00, 5 - i);
 
+            size_t remaining_bytes = 0;
             switch (i)
             {
             case 4:
-                arr_8[6] = (arr_5[3] & 0x03) << 3;
-                arr_8[5] = (arr_5[3] & 0x7C) >> 2;
+                encoded_data_8[6] = (decoded_data_5[3] & 0x03) << 3;
+                encoded_data_8[5] = (decoded_data_5[3] & 0x7C) >> 2;
+                remaining_bytes += 2;
                 FALLTHROUGH;
             case 3:
-                arr_8[4] = ((arr_5[2] & 0x0F) << 1) + ((arr_5[3] & 0x80) >> 7);
+                encoded_data_8[4] = ((decoded_data_5[2] & 0x0F) << 1) |
+                                    ((decoded_data_5[3] & 0x80) >> 7);
+                remaining_bytes++;
                 FALLTHROUGH;
             case 2:
-                arr_8[3] = ((arr_5[1] & 0x01) << 4) + ((arr_5[2] & 0xF0) >> 4);
-                arr_8[2] = (arr_5[1] & 0x3E) >> 1;
+                encoded_data_8[3] = ((decoded_data_5[1] & 0x01) << 4) |
+                                    ((decoded_data_5[2] & 0xF0) >> 4);
+                encoded_data_8[2] = (decoded_data_5[1] & 0x3E) >> 1;
+                remaining_bytes += 2;
                 FALLTHROUGH;
             case 1:
-                arr_8[1] = ((arr_5[0] & 0x07) << 2) + ((arr_5[1] & 0xC0) >> 6);
-                arr_8[0] = (arr_5[0] & 0xF8) >> 3;
+                encoded_data_8[1] = ((decoded_data_5[0] & 0x07) << 2) |
+                                    ((decoded_data_5[1] & 0xC0) >> 6);
+                encoded_data_8[0] = (decoded_data_5[0] & 0xF8) >> 3;
+                remaining_bytes += 2;
                 FALLTHROUGH;
             default:
                 break;
             }
 
-            size_t k = 0;
-            if (i == 1)
+            for (size_t idx = 0; idx < remaining_bytes; idx++)
             {
-                k = i + 1;
-            }
-            else if (i == 4)
-            {
-                k = i + 3;
-            }
-            else
-            {
-                k = i + 2;
+                encoded.push_back(table[encoded_data_8[idx]]);
             }
 
-            for (size_t j = 0; j < k; j++)
+            size_t padding_cnt = 8 - (encoded.length() % 8);
+            while (padding_cnt-- != 0)
             {
-                encoded += table[arr_8[j]];
-            }
-
-            size_t tmp = encoded.length() % 8;
-            while (tmp++ != 8)
-            {
-                encoded += '=';
+                encoded.push_back('=');
             }
         }
 
         return encoded;
     }
 
-    /***************************************************************************
-    * Helper Functions
-    *   inline std::string encode(StringType)
-    *   inline std::string encode_hex(StringType)
-    * 
-    *   inline std::string encode(const std::initializer_list<uint8_t>&)
-    *   inline std::string encode_hex(const std::initializer_list<uint8_t>&)
-    * 
-    *   inline std::string encode(const std::vector<uint8_t>&)
-    *   inline std::string encode_hex(const std::vector<uint8_t>&)
-    ***************************************************************************/
+    inline std::string decode_base(const char* data,
+        const size_t data_len, eEncodedType encoded_type)
+    {
+        eResultCode code = check_format(data, data_len);
+        if (code != eResultCode::Success)
+        {
+            throwRuntimeError(code, __FUNCTION__);
+        }
+
+        std::function<const uint8_t(const char)> decode_char_func{};
+        if (encoded_type == eEncodedType::Standard)
+        {
+            decode_char_func = &decode_char;
+        }
+        else
+        {
+            decode_char_func = &hex_decode_char;
+        }
+
+        std::string decoded{};
+        decoded.reserve(data_len * 5 / 8);
+
+        uint8_t encoded_data_8[8] = { 0, };
+        uint8_t decoded_data_5[5] = { 0, };
+
+        size_t i = 0;
+        for (size_t pos = 0; pos < data_len; pos++)
+        {
+            if (data[pos] == '=')
+            {
+                break;
+            }
+
+            encoded_data_8[i++] = decode_char_func(data[pos]);
+
+            if (i == 8)
+            {
+                decoded_data_5[0] = ((encoded_data_8[0] & 0x1F) << 3) |
+                                    ((encoded_data_8[1] & 0x1C) >> 2);
+
+                decoded_data_5[1] = ((encoded_data_8[1] & 0x03) << 6) |
+                                    ((encoded_data_8[2] & 0x1F) << 1) |
+                                    ((encoded_data_8[3] & 0x10) >> 4);
+
+                decoded_data_5[2] = ((encoded_data_8[3] & 0x0F) << 4) |
+                                    ((encoded_data_8[4] & 0x1E) >> 1);
+
+                decoded_data_5[3] = ((encoded_data_8[4] & 0x01) << 7) |
+                                    ((encoded_data_8[5] & 0x1F) << 2) |
+                                    ((encoded_data_8[6] & 0x18) >> 3);
+
+                decoded_data_5[4] = ((encoded_data_8[6] & 0x07) << 5) |
+                                    encoded_data_8[7];
+
+                for(const auto& c : decoded_data_5)
+                {
+                    decoded.push_back(c);
+                }
+
+                i = 0;
+            }
+        }
+
+        if (i)  // i == (2 || 4 || 5 || 7)
+        {
+            size_t remaining_bytes = 0;
+            switch (i)
+            {
+            case 7:
+                decoded_data_5[3] = ((encoded_data_8[4] & 0x01) << 7) |
+                                    ((encoded_data_8[5] & 0x1F) << 2) |
+                                    ((encoded_data_8[6] & 0x18) >> 3);
+                remaining_bytes++;
+                FALLTHROUGH;
+            case 5:
+                decoded_data_5[2] = ((encoded_data_8[3] & 0x0F) << 4) |
+                                    ((encoded_data_8[4] & 0x1E) >> 1);
+                remaining_bytes++;
+                FALLTHROUGH;
+            case 4:
+                decoded_data_5[1] = ((encoded_data_8[1] & 0x03) << 6) |
+                                    ((encoded_data_8[2] & 0x1F) << 1) |
+                                    ((encoded_data_8[3] & 0x10) >> 4);
+                remaining_bytes++;
+                FALLTHROUGH;
+            case 2:
+                decoded_data_5[0] = ((encoded_data_8[0] & 0x1F) << 3) |
+                                    ((encoded_data_8[1] & 0x1C) >> 2);
+                remaining_bytes++;
+                FALLTHROUGH;
+            default:
+                break;
+            }
+
+            for (size_t idx = 0; idx < remaining_bytes; idx++)
+            {
+                decoded.push_back(decoded_data_5[idx]);
+            }
+        }
+
+        return decoded;
+    }
+
+
+    /// ========================================================================
+    /// Helper Functions
+    /// ========================================================================
+
     inline std::string encode(StringType str = "")
     {
         return (str.empty())
@@ -325,6 +764,52 @@ namespace _32_
             : encode_base(reinterpret_cast<const char*>(vec.data()),
                 vec.size(), hex_encoding_table);
     }
+
+    inline std::string decode(StringType str = "")
+    {
+        return (str.empty())
+            ? std::string("")
+            : decode_base(str.data(), str.size(), eEncodedType::Standard);
+    }
+
+    inline std::string decode_hex(StringType str = "")
+    {
+        return (str.empty())
+            ? std::string("")
+            : decode_base(str.data(), str.size(), eEncodedType::Hex);
+    }
+
+    inline std::string decode(const std::initializer_list<uint8_t>& list)
+    {
+        return (list.size() == 0)
+            ? std::string("")
+            : decode_base(reinterpret_cast<const char*>(list.begin()),
+                list.size(), eEncodedType::Standard);
+    }
+
+    inline std::string decode_hex(const std::initializer_list<uint8_t>& list)
+    {
+        return (list.size() == 0)
+            ? std::string("")
+            : decode_base(reinterpret_cast<const char*>(list.begin()),
+                list.size(), eEncodedType::Hex);
+    }
+
+    inline std::string decode(const std::vector<uint8_t>& vec)
+    {
+        return (vec.empty())
+            ? std::string("")
+            : decode_base(reinterpret_cast<const char*>(vec.data()),
+                vec.size(), eEncodedType::Standard);
+    }
+
+    inline std::string decode_hex(const std::vector<uint8_t>& vec)
+    {
+        return (vec.empty())
+            ? std::string("")
+            : decode_base(reinterpret_cast<const char*>(vec.data()),
+                vec.size(), eEncodedType::Hex);
+    }
 }  // namespace BaseXX::_32_
 
 namespace _16_
@@ -337,37 +822,69 @@ namespace _16_
         '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',  // 8 ~ 15
     };
 
+    inline const uint8_t decode_char(const char c)
+    {
+        if (c >= '0' && c <= '9')
+        {
+            return c - '0';
+        }
+        else if (c >= 'A' && c <= 'F')
+        {
+            return 10 + (c - 'A');
+        }
+
+        throwRuntimeError(eResultCode::InvalidCharactor, __FUNCTION__);
+    }
+
     inline std::string encode_base(const char* data,
         const size_t data_len, const uint8_t* table = encoding_table)
     {
         std::string encoded{};
-        uint8_t arr_2[2] = { 0, };
+        encoded.reserve(data_len * 2);
+
+        uint8_t encoded_data_2[2] = { 0, };
 
         for (size_t pos = 0; pos < data_len; pos++)
         {
-            arr_2[0] = (data[pos] & 0xF0) >> 4;
-            arr_2[1] = data[pos] & 0x0F;
+            encoded_data_2[0] = (data[pos] & 0xF0) >> 4;
+            encoded_data_2[1] = data[pos] & 0x0F;
 
-            for (size_t i = 0; i < 2; i++)
+            for (const auto& c : encoded_data_2)
             {
-                encoded += table[arr_2[i]];
+                encoded.push_back(table[c]);
             }
         }
 
         return encoded;
     }
 
-    /***************************************************************************
-    * Helper Functions
-    *   inline std::string encode(StringType)
-    * 
-    *   inline std::string encode(const std::initializer_list<uint8_t>&)
-    * 
-    *   inline std::string encode(const std::vector<uint8_t>&)
-    ***************************************************************************/
+    inline std::string decode_base(const char* data, const size_t data_len)
+    {
+        if (data_len % 2 != 0)
+        {
+            throwRuntimeError(eResultCode::InvalidLength, __FUNCTION__);
+        }
+
+        std::string decoded{};
+        decoded.reserve(data_len / 2);
+
+        for (size_t i = 0; i < data_len; i += 2)
+        {
+            decoded += ((decode_char(data[i]) & 0x0F) << 4) |
+                       decode_char(data[i + 1]);
+        }
+
+        return decoded;
+    }
+
+
+    /// ========================================================================
+    /// Helper Functions
+    /// ========================================================================
+
     inline std::string encode(StringType str)
     {
-        return (str.size() == 0)
+        return (str.empty())
             ? std::string("")
             : encode_base(str.data(), str.size());
     }
@@ -385,6 +902,28 @@ namespace _16_
         return (vec.empty())
             ? std::string("")
             : encode_base(
+                reinterpret_cast<const char*>(vec.data()), vec.size());
+    }
+
+    inline std::string decode(StringType str)
+    {
+        return (str.empty())
+            ? std::string("")
+            : decode_base(str.data(), str.size());
+    }
+
+    inline std::string decode(const std::initializer_list<uint8_t>& list)
+    {
+        return (list.size() == 0)
+            ? std::string("")
+            : decode_base(reinterpret_cast<const char*>(list.begin()), list.size());
+    }
+
+    inline std::string decode(const std::vector<uint8_t>& vec)
+    {
+        return (vec.empty())
+            ? std::string("")
+            : decode_base(
                 reinterpret_cast<const char*>(vec.data()), vec.size());
     }
 }  // namespace BaseXX::_16_
