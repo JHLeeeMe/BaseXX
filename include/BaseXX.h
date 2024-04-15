@@ -21,7 +21,7 @@ namespace BaseXX
 {
 #if __cplusplus >= 201703L
     using StringType = std::string_view;
-#else
+#else  // __cplusplus >= 201703L
     using StringType = const std::string&;
 #endif  // __cplusplus >= 201703L
 
@@ -29,10 +29,11 @@ namespace BaseXX
     {
         Success = 0,
         
-        InvalidBase        = 10,
-        InvalidLength      = InvalidBase + 1,  // 11
-        InvalidCharactor   = InvalidBase + 2,  // 12
-        InvalidEncodedType = InvalidBase + 3,  // 13
+        InvalidBase         = 10,
+        InvalidLength       = InvalidBase + 1,  // 11
+        InvalidCharactor    = InvalidBase + 2,  // 12
+        InvalidEncodedType  = InvalidBase + 3,  // 13
+        InvalidPaddingCount = InvalidBase + 4,  // 14
     };
 
     enum class eEncodedType
@@ -43,28 +44,34 @@ namespace BaseXX
     };
 
     [[noreturn]]
-    inline void throwRuntimeError(eResultCode code, StringType caller_info, StringType err_msg = "")
+    inline void throwRuntimeError(eResultCode code, StringType caller_info, StringType msg = "")
     {
-        if (!err_msg.empty())
-        {
-            throw std::runtime_error(err_msg);
-        }
-
         std::string error_message{ "Error occurred in " + caller_info + ":\n\t" };
-        switch (code)
+
+        if (!msg.empty())
         {
-        case eResultCode::InvalidLength:
-            error_message += "Invalid encoded text length.";
-            break;
-        case eResultCode::InvalidCharactor:
-            error_message += "Invalid encoded character.";
-            break;
-        case eResultCode::InvalidEncodedType:
-            error_message += "Invalid encoded type.";
-            break;
-        default:
-            error_message += "Invalid encoded text.";
-            break;
+            error_message += msg;
+        }
+        else
+        {
+            switch (code)
+            {
+            case eResultCode::InvalidLength:
+                error_message += "Invalid encoded text length.";
+                break;
+            case eResultCode::InvalidPaddingCount:
+                error_message += "Invalid encoded padding count.";
+                break;
+            case eResultCode::InvalidCharactor:
+                error_message += "Invalid encoded character.";
+                break;
+            case eResultCode::InvalidEncodedType:
+                error_message += "Invalid encoded type.";
+                break;
+            default:
+                error_message += "Invalid encoded text.";
+                break;
+            }
         }
 
         throw std::runtime_error(error_message);
@@ -114,7 +121,7 @@ namespace _64_
         {
             if (padding_cnt > 2)
             {
-                return eResultCode::InvalidCharactor;
+                return eResultCode::InvalidPaddingCount;
             }
 
             if (encoded_text[idx] != '=')
@@ -226,8 +233,8 @@ namespace _64_
                 FALLTHROUGH;
             case 1:
                 encoded_data_4[1] = ((decoded_data_3[0] & 0x03) << 4) |
-                                    (decoded_data_3[1] >> 4);
-                encoded_data_4[0] = decoded_data_3[0] >> 2;
+                                    ((decoded_data_3[1] & 0xF0) >> 4);
+                encoded_data_4[0] = (decoded_data_3[0] & 0xFC) >> 2;
                 FALLTHROUGH;
             default:
                 break;
@@ -289,11 +296,11 @@ namespace _64_
 
             if (i == 4)
             {
-                decoded_data_3[0] = (encoded_data_4[0] << 2) |
-                                    (encoded_data_4[1] >> 4);
+                decoded_data_3[0] = ((encoded_data_4[0] & 0x3F) << 2) |
+                                    ((encoded_data_4[1] & 0x30) >> 4);
 
                 decoded_data_3[1] = ((encoded_data_4[1] & 0x0F) << 4) |
-                                    (encoded_data_4[2] >> 2);
+                                    ((encoded_data_4[2] & 0x3C) >> 2);
 
                 decoded_data_3[2] = ((encoded_data_4[2] & 0x03) << 6) |
                                     encoded_data_4[3];
@@ -315,11 +322,11 @@ namespace _64_
             {
             case 3:
                 decoded_data_3[1] = ((encoded_data_4[1] & 0x0F) << 4) |
-                                    (encoded_data_4[2] >> 2);
+                                    ((encoded_data_4[2] & 0x3C) >> 2);
                 FALLTHROUGH;
             case 2:
-                decoded_data_3[0] = (encoded_data_4[0] << 2) |
-                                    (encoded_data_4[1] >> 4);
+                decoded_data_3[0] = ((encoded_data_4[0] & 0x3F) << 2) |
+                                    ((encoded_data_4[1] & 0x30) >> 4);
                 FALLTHROUGH;
             default:
                 break;
@@ -456,12 +463,11 @@ namespace _32_
         'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',  // 24 ~ 31
     };
 
-    inline bool is_valid_encoded_text(const char* encoded_text,
-        const size_t text_len, eEncodedType encoded_type)
+    inline eResultCode check_format(const char* encoded_text, const size_t text_len)
     {
         if (text_len % 8 != 0)
         {
-            throw std::runtime_error("Invalid Base32 encoded length.");
+            return eResultCode::InvalidLength;
         }
 
         size_t idx = text_len - 1;
@@ -470,7 +476,7 @@ namespace _32_
         {
             if (padding_cnt > 6)
             {
-                return false;
+                return eResultCode::InvalidPaddingCount;
             }
 
             if (encoded_text[idx] != '=')
@@ -482,32 +488,7 @@ namespace _32_
             padding_cnt++;
         }
 
-        if (encoded_type == eEncodedType::Standard)
-        {
-            for (size_t i = 0; i < text_len - padding_cnt; i++)
-            {
-                const char c = encoded_text[i];
-                if (!('A' <= c && c <= 'Z') &&
-                    !('2' <= c && c <= '7'))
-                {
-                    return false;
-                }
-            }
-        }
-        else if (encoded_type == eEncodedType::Hex)
-        {
-            for (size_t i = 0; i < text_len - padding_cnt; i++)
-            {
-                const char c = encoded_text[i];
-                if (!('0' <= c && c <= '9') &&
-                    !('A' <= c && c <= 'V'))
-                {
-                    return false;
-                }
-            }
-        }
-
-        return true;
+        return eResultCode::Success;
     }
 
     inline const uint8_t decode_char(const char c)
@@ -521,7 +502,7 @@ namespace _32_
             return 26 + (c - '2');
         }
 
-        throw std::runtime_error("Invalid character in Base32 Encoding.");
+        throwRuntimeError(eResultCode::InvalidCharactor, __FUNCTION__);
     }
 
     inline const uint8_t hex_decode_char(const char c)
@@ -535,7 +516,7 @@ namespace _32_
             return 10 + (c - 'A');
         }
 
-        throw std::runtime_error("Invalid character in Base32-Hex Encoding.");
+        throwRuntimeError(eResultCode::InvalidCharactor, __FUNCTION__);
     }
 
     inline std::string encode_base(const char* data,
@@ -573,9 +554,9 @@ namespace _32_
 
                 encoded_data_8[7] = decoded_data_5[4] & 0x1F;
 
-                for (size_t k = 0; k < 8; k++)
+                for (const auto& c : encoded_data_8)
                 {
-                    encoded += table[encoded_data_8[k]];
+                    encoded.push_back(table[c]);
                 }
                 
                 i = 0;
@@ -617,13 +598,13 @@ namespace _32_
 
             for (size_t idx = 0; idx < remaining_bytes; idx++)
             {
-                encoded += table[encoded_data_8[idx]];
+                encoded.push_back(table[encoded_data_8[idx]]);
             }
 
-            size_t tmp = encoded.length() % 8;
-            while (tmp++ != 8)
+            size_t padding_cnt = 8 - (encoded.length() % 8);
+            while (padding_cnt-- != 0)
             {
-                encoded += '=';
+                encoded.push_back('=');
             }
         }
 
@@ -633,9 +614,10 @@ namespace _32_
     inline std::string decode_base(const char* data,
         const size_t data_len, eEncodedType encoded_type)
     {
-        if (!is_valid_encoded_text(data, data_len, encoded_type))
+        eResultCode code = check_format(data, data_len);
+        if (code != eResultCode::Success)
         {
-            throw std::runtime_error("Invalid Base32[-Hex] encoded text.");
+            throwRuntimeError(code, __FUNCTION__);
         }
 
         std::function<const uint8_t(const char)> decode_char_func{};
@@ -666,26 +648,26 @@ namespace _32_
 
             if (i == 8)
             {
-                decoded_data_5[0] = (encoded_data_8[0] << 3) |
-                                    (encoded_data_8[1] >> 2);
+                decoded_data_5[0] = ((encoded_data_8[0] & 0x1F) << 3) |
+                                    ((encoded_data_8[1] & 0x1C) >> 2);
 
                 decoded_data_5[1] = ((encoded_data_8[1] & 0x03) << 6) |
-                                    (encoded_data_8[2] << 1) |
-                                    (encoded_data_8[3] >> 4);
+                                    ((encoded_data_8[2] & 0x1F) << 1) |
+                                    ((encoded_data_8[3] & 0x10) >> 4);
 
                 decoded_data_5[2] = ((encoded_data_8[3] & 0x0F) << 4) |
-                                    (encoded_data_8[4] >> 1);
+                                    ((encoded_data_8[4] & 0x1E) >> 1);
 
                 decoded_data_5[3] = ((encoded_data_8[4] & 0x01) << 7) |
-                                    (encoded_data_8[5] << 2) |
-                                    (encoded_data_8[6] >> 3);
+                                    ((encoded_data_8[5] & 0x1F) << 2) |
+                                    ((encoded_data_8[6] & 0x18) >> 3);
 
                 decoded_data_5[4] = ((encoded_data_8[6] & 0x07) << 5) |
                                     encoded_data_8[7];
 
-                for (size_t j = 0; j < 5; ++j)
+                for(const auto& c : decoded_data_5)
                 {
-                    decoded.push_back(decoded_data_5[j]);
+                    decoded.push_back(c);
                 }
 
                 i = 0;
@@ -699,24 +681,24 @@ namespace _32_
             {
             case 7:
                 decoded_data_5[3] = ((encoded_data_8[4] & 0x01) << 7) |
-                                    (encoded_data_8[5] << 2) |
-                                    (encoded_data_8[6] >> 3);
+                                    ((encoded_data_8[5] & 0x1F) << 2) |
+                                    ((encoded_data_8[6] & 0x18) >> 3);
                 remaining_bytes++;
                 FALLTHROUGH;
             case 5:
                 decoded_data_5[2] = ((encoded_data_8[3] & 0x0F) << 4) |
-                                    (encoded_data_8[4] >> 1);
+                                    ((encoded_data_8[4] & 0x1E) >> 1);
                 remaining_bytes++;
                 FALLTHROUGH;
             case 4:
                 decoded_data_5[1] = ((encoded_data_8[1] & 0x03) << 6) |
-                                    (encoded_data_8[2] << 1) |
-                                    (encoded_data_8[3] >> 4);
+                                    ((encoded_data_8[2] & 0x1F) << 1) |
+                                    ((encoded_data_8[3] & 0x10) >> 4);
                 remaining_bytes++;
                 FALLTHROUGH;
             case 2:
-                decoded_data_5[0] = (encoded_data_8[0] << 3) |
-                                    (encoded_data_8[1] >> 2);
+                decoded_data_5[0] = ((encoded_data_8[0] & 0x1F) << 3) |
+                                    ((encoded_data_8[1] & 0x1C) >> 2);
                 remaining_bytes++;
                 FALLTHROUGH;
             default:
@@ -851,7 +833,7 @@ namespace _16_
             return 10 + (c - 'A');
         }
 
-        throw std::runtime_error("Invalid character in Base16 encoding");
+        throwRuntimeError(eResultCode::InvalidCharactor, __FUNCTION__);
     }
 
     inline std::string encode_base(const char* data,
@@ -860,16 +842,16 @@ namespace _16_
         std::string encoded{};
         encoded.reserve(data_len * 2);
 
-        uint8_t arr_2[2] = { 0, };
+        uint8_t encoded_data_2[2] = { 0, };
 
         for (size_t pos = 0; pos < data_len; pos++)
         {
-            arr_2[0] = (data[pos] & 0xF0) >> 4;
-            arr_2[1] = data[pos] & 0x0F;
+            encoded_data_2[0] = (data[pos] & 0xF0) >> 4;
+            encoded_data_2[1] = data[pos] & 0x0F;
 
-            for (size_t i = 0; i < 2; i++)
+            for (const auto& c : encoded_data_2)
             {
-                encoded += table[arr_2[i]];
+                encoded.push_back(table[c]);
             }
         }
 
@@ -880,7 +862,7 @@ namespace _16_
     {
         if (data_len % 2 != 0)
         {
-            throw std::runtime_error("Invalid Base16 encoded length");
+            throwRuntimeError(eResultCode::InvalidLength, __FUNCTION__);
         }
 
         std::string decoded{};
@@ -888,7 +870,8 @@ namespace _16_
 
         for (size_t i = 0; i < data_len; i += 2)
         {
-            decoded += ((decode_char(data[i]) << 4) | decode_char(data[i + 1]));
+            decoded += ((decode_char(data[i]) & 0x0F) << 4) |
+                       decode_char(data[i + 1]);
         }
 
         return decoded;
