@@ -44,7 +44,8 @@ namespace BaseXX
     };
 
     [[noreturn]]
-    inline void throwRuntimeError(eResultCode code, StringType caller_info, StringType msg = "")
+    inline void throwRuntimeError(
+        eResultCode code, StringType caller_info, StringType msg = "")
     {
         std::string error_message{ "Error occurred in " + caller_info + ":\n\t" };
 
@@ -625,9 +626,13 @@ namespace _32_
         {
             decode_char_func = &decode_char;
         }
-        else
+        else if (encoded_type == eEncodedType::Hex)
         {
             decode_char_func = &hex_decode_char;
+        }
+        else
+        {
+            throwRuntimeError(eResultCode::InvalidEncodedType, __FUNCTION__);
         }
 
         std::string decoded{};
