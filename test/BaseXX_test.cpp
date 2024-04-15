@@ -125,14 +125,15 @@ TEST(Base64, decode)
 
     {  // multiple encode & decode
         using namespace ::BaseXX::_64_;
-        ASSERT_EQ("https://www.base64decode.org",
+        ASSERT_EQ("https://www.example.com",
             decode(decode(
             encode(encode(
             decode(
             encode(
-            decode("aHR0cHM6Ly93d3cuYmFzZTY0ZGVjb2RlLm9yZw==")))))))
+            decode("aHR0cHM6Ly93d3cuZXhhbXBsZS5jb20=")))))))
         );
     }
+
     {  // exception
         ASSERT_THROW(base64::decode("====="), std::runtime_error);
         ASSERT_THROW(base64::decode_urlsafe({"_/_/"}), std::runtime_error);
