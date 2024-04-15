@@ -262,6 +262,50 @@ TEST(Base32, decode)
     }
 }  // TEST(Base32, decode)
 
+TEST(Base32, decode_hex)
+{
+    ASSERT_EQ("", base32::decode_hex(""));
+    ASSERT_EQ("", base32::decode_hex(std::string()));
+    ASSERT_EQ("", base32::decode_hex({}));
+
+    ASSERT_EQ("\\", base32::decode_hex("BG======"));
+    ASSERT_EQ("\\n", base32::decode_hex("BHN0===="));
+    ASSERT_EQ("\\n\\0", base32::decode_hex("BHN5OC0="));
+    ASSERT_EQ(" ", base32::decode_hex("40======"));
+    ASSERT_EQ("`", base32::decode_hex("C0======"));
+
+    ASSERT_EQ("한글", base32::decode_hex("TMAPPQLOG0======"));
+    ASSERT_EQ("漢字", base32::decode_hex("SQUA5PDDIS======"));
+    ASSERT_EQ("汉字", base32::decode_hex("SQOOJPDDIS======"));
+    ASSERT_EQ("ひらがな", base32::decode_hex("SE0R5OS2H7HO3373G6L0===="));
+    ASSERT_EQ("カタカナ", base32::decode_hex("SE1ANOS2NVHO5AV3GE50===="));
+
+    {  // initializer_list<uint8_t>
+        ASSERT_EQ("\xed\x95\x9c", base32::decode_hex({ "TMAPO===" }));  // '한'
+        ASSERT_EQ(" ", base32::decode_hex({"40======"}));
+    }
+
+    {  // std::vector<uint8_t>
+        std::vector<uint8_t> vec_empty{};
+        ASSERT_EQ("", base32::decode_hex(vec_empty));
+
+        std::vector<uint8_t> vec_1{};
+        vec_1.reserve(128);
+        ASSERT_EQ("", base32::decode_hex(vec_1));
+
+        std::vector<uint8_t> vec_2{ 'C', '5', '0', 'G', '=', '=', '=', '=' };  // "aA"
+        ASSERT_EQ("aA", base32::decode_hex(vec_2));
+
+        std::vector<uint8_t> vec_3{ 'T', 'M', 'A', 'P', 'O', '=', '=', '=' };  // '한'
+        ASSERT_EQ("\xed\x95\x9c", base32::decode_hex(vec_3));
+    }
+
+    {  // exception
+        ASSERT_THROW(base32::decode_hex("========"), std::runtime_error);
+        ASSERT_THROW(base32::decode_hex("        "), std::runtime_error);
+    }
+}  // TEST(Base32, decode_hex)
+
 TEST(Base16, encode)
 {
     ASSERT_EQ("", base16::encode(""));
