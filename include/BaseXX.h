@@ -29,9 +29,10 @@ namespace BaseXX
     {
         Success = 0,
         
-        InvalidBase      = 10,
-        InvalidLength    = InvalidBase + 1,  // 11
-        InvalidCharactor = InvalidBase + 2,  // 12
+        InvalidBase        = 10,
+        InvalidLength      = InvalidBase + 1,  // 11
+        InvalidCharactor   = InvalidBase + 2,  // 12
+        InvalidEncodedType = InvalidBase + 3,  // 13
     };
 
     enum class eEncodedType
@@ -41,24 +42,28 @@ namespace BaseXX
         Hex,           // 2
     };
 
-    inline void throwRuntimeError(eResultCode code, StringType err_msg = "")
+    [[noreturn]]
+    inline void throwRuntimeError(eResultCode code, StringType caller_info, StringType err_msg = "")
     {
         if (!err_msg.empty())
         {
             throw std::runtime_error(err_msg);
         }
 
-        std::string error_message{};
+        std::string error_message{ "Error occurred in " + caller_info + ":\n\t" };
         switch (code)
         {
         case eResultCode::InvalidLength:
-            error_message = "Invalid Base64[-Urlsafe] encoded text length.";
+            error_message += "Invalid encoded text length.";
             break;
         case eResultCode::InvalidCharactor:
-            error_message = "Invalid character in Base64[-Urlsafe] Encoding.";
+            error_message += "Invalid encoded character.";
+            break;
+        case eResultCode::InvalidEncodedType:
+            error_message += "Invalid encoded type.";
             break;
         default:
-            error_message = "Invalid Base64[-Urlsafe] encoded text.";
+            error_message += "Invalid encoded text.";
             break;
         }
 
@@ -147,7 +152,7 @@ namespace _64_
             return 63;
         }
 
-        throw std::runtime_error("Invalid character in Base64 Encoding.");
+        throwRuntimeError(eResultCode::InvalidCharactor, __FUNCTION__);
     }
 
     inline const uint8_t urlsafe_decode_char(const char c)
@@ -173,7 +178,7 @@ namespace _64_
             return 63;
         }
 
-        throw std::runtime_error("Invalid character in Base64-Urlsafe Encoding.");
+        throwRuntimeError(eResultCode::InvalidCharactor, __FUNCTION__);
     }
     
     inline std::string encode_base(const char* data,
@@ -201,9 +206,9 @@ namespace _64_
 
                 encoded_data_4[3] = decoded_data_3[2] & 0x3F;
 
-                for (size_t k = 0; k < 4; k++)
+                for (const auto& c : encoded_data_4)
                 {
-                    encoded += table[encoded_data_4[k]];
+                    encoded.push_back(table[c]);
                 }
 
                 i = 0;
@@ -214,22 +219,29 @@ namespace _64_
         {
             memset(decoded_data_3 + i, 0x00, 3 - i);
 
-            encoded_data_4[0] = (decoded_data_3[0] & 0xFC) >> 2;
-
-            encoded_data_4[1] = ((decoded_data_3[0] & 0x03) << 4) |
-                                ((decoded_data_3[1] & 0xF0) >> 4);
-
-            encoded_data_4[2] = (decoded_data_3[1] & 0x0F) << 2;
+            switch (i)
+            {
+            case 2:
+                encoded_data_4[2] = (decoded_data_3[1] & 0x0F) << 2;
+                FALLTHROUGH;
+            case 1:
+                encoded_data_4[1] = ((decoded_data_3[0] & 0x03) << 4) |
+                                    (decoded_data_3[1] >> 4);
+                encoded_data_4[0] = decoded_data_3[0] >> 2;
+                FALLTHROUGH;
+            default:
+                break;
+            }
 
             for (size_t j = 0; j < i + 1; j++)
             {
-                encoded += table[encoded_data_4[j]];
+                encoded.push_back(table[encoded_data_4[j]]);
             }
 
-            size_t tmp = encoded.length() % 4;
-            while (tmp++ != 4)
+            size_t padding_cnt = 4 - (encoded.length() % 4);
+            while (padding_cnt-- != 0)
             {
-                encoded += '=';
+                encoded.push_back('=');
             }
         }
 
@@ -242,7 +254,7 @@ namespace _64_
         eResultCode code = check_format(data, data_len);
         if (code != eResultCode::Success)
         {
-             throwRuntimeError(code);
+             throwRuntimeError(code, __FUNCTION__);
         }
 
         std::function<const uint8_t(const char)> decode_char_func{};
@@ -253,6 +265,10 @@ namespace _64_
         else if (encoded_type == eEncodedType::URLSafe)
         {
             decode_char_func = &urlsafe_decode_char;
+        }
+        else
+        {
+            throwRuntimeError(eResultCode::InvalidEncodedType, __FUNCTION__);
         }
 
         std::string decoded{};
@@ -282,9 +298,9 @@ namespace _64_
                 decoded_data_3[2] = ((encoded_data_4[2] & 0x03) << 6) |
                                     encoded_data_4[3];
 
-                for (size_t k = 0; k < 3; k++)
+                for (const auto& c : decoded_data_3)
                 {
-                    decoded.push_back(decoded_data_3[k]);
+                    decoded.push_back(c);
                 }
 
                 i = 0;
@@ -311,7 +327,7 @@ namespace _64_
 
             for (int j = 0; j < (i - 1); ++j)
             {
-                decoded += decoded_data_3[j];
+                decoded.push_back(decoded_data_3[j]);
             }
         }
 
