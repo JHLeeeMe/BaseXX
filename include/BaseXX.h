@@ -1,6 +1,39 @@
-/// rfc4648
-/// https://datatracker.ietf.org/doc/html/rfc4648
+/// ============================================================================
+/// BaseXX.h
+/// ----------------------------------------------------------------------------
+/// Header-only library for various Base Encoding & Decoding algorithms.
+/// includes Base64, Base64-URLsafe, Base32, Base32-Hex, and Base16.
+/// Based on RFC 4648 (https://datatracker.ietf.org/doc/html/rfc4648)
 ///
+/// ----------------------------------------------------------------------------
+/// Code Structure
+/// ----------------------------------------------------------------------------
+/// namespace BaseXX
+/// {
+///     // Common functions, enums, and type definitions
+///     namespace _64
+///     {
+///         // Base64[-URLsafe] encoding & decoding implementations
+///         // Helper functions
+///     }
+///     namespace _32
+///     {
+///         // Base32[-Hex] encoding & decoding implementations
+///         // Helper functions
+///     }
+///     namespace _16
+///     {
+///         // Base16 encoding & decoding implementations
+///         // Helper functions
+///     }
+/// }
+/// using base64 = ::BaseXX::_64;
+/// using base32 = ::BaseXX::_32;
+/// using base16 = ::BaseXX::_16;
+///
+/// ----------------------------------------------------------------------------
+/// License: WTFPL (http://www.wtfpl.net/about/)
+/// ============================================================================
 
 #ifndef BASEXX_H
 #define BASEXX_H
@@ -19,6 +52,10 @@
 
 namespace BaseXX
 {
+    /// ========================================================================
+    /// Common Type Definitions & Enums & Functions
+    /// ========================================================================
+
 #if __cplusplus >= 201703L
     using StringType = std::string_view;
 #else  // __cplusplus >= 201703L
@@ -47,7 +84,8 @@ namespace BaseXX
     inline void throwRuntimeError(
         eResultCode code, StringType caller_info, StringType msg = "")
     {
-        std::string error_message{ "Error occurred in " + caller_info + ":\n\t" };
+        std::string error_message{
+            "Error occurred in " + caller_info + ":\n\t" };
 
         if (!msg.empty())
         {
@@ -80,6 +118,10 @@ namespace BaseXX
 
 namespace _64_
 {
+    /// ========================================================================
+    /// Base64[-URLsafe] Encoding/Decoding Implementation
+    /// ========================================================================
+
     /// The Base 64 Alphabet Table
     /// https://datatracker.ietf.org/doc/html/rfc4648#section-4
     ///
@@ -444,6 +486,10 @@ namespace _64_
 
 namespace _32_
 {
+    /// ========================================================================
+    /// Base32[-Hex] Encoding/Decoding Implementation
+    /// ========================================================================
+
     /// The Base 32 Alphabet Table
     /// https://datatracker.ietf.org/doc/html/rfc4648#section-6
     ///
@@ -820,6 +866,10 @@ namespace _32_
 
 namespace _16_
 {
+    /// ========================================================================
+    /// Base16 Encoding/Decoding Implementation
+    /// ========================================================================
+
     /// The Base 16 Alphabet Table
     /// https://datatracker.ietf.org/doc/html/rfc4648#section-8
     ///
