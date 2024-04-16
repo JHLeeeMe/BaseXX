@@ -1,6 +1,39 @@
-/// rfc4648
-/// https://datatracker.ietf.org/doc/html/rfc4648
+/// ============================================================================
+/// BaseXX.h
+/// ----------------------------------------------------------------------------
+/// Header-only library for various Base Encoding & Decoding algorithms.
+/// includes Base64, Base64-URLsafe, Base32, Base32-Hex, and Base16.
+/// Based on RFC 4648 (https://datatracker.ietf.org/doc/html/rfc4648)
 ///
+/// ----------------------------------------------------------------------------
+/// Code Structure
+/// ----------------------------------------------------------------------------
+/// namespace BaseXX
+/// {
+///     // Common functions, enums, and type definitions
+///     namespace _64_
+///     {
+///         // Base64[-URLsafe] encoding & decoding implementations
+///         // Helper functions
+///     }
+///     namespace _32_
+///     {
+///         // Base32[-Hex] encoding & decoding implementations
+///         // Helper functions
+///     }
+///     namespace _16_
+///     {
+///         // Base16 encoding & decoding implementations
+///         // Helper functions
+///     }
+/// }
+/// using base64 = ::BaseXX::_64_;
+/// using base32 = ::BaseXX::_32_;
+/// using base16 = ::BaseXX::_16_;
+///
+/// ----------------------------------------------------------------------------
+/// License: WTFPL (http://www.wtfpl.net/about/)
+/// ============================================================================
 
 #ifndef BASEXX_H
 #define BASEXX_H
@@ -19,6 +52,10 @@
 
 namespace BaseXX
 {
+    /// ========================================================================
+    /// Common Type Definitions & Enums & Functions
+    /// ========================================================================
+
 #if __cplusplus >= 201703L
     using StringType = std::string_view;
 #else  // __cplusplus >= 201703L
@@ -31,7 +68,7 @@ namespace BaseXX
         
         InvalidBase         = 10,
         InvalidLength       = InvalidBase + 1,  // 11
-        InvalidCharactor    = InvalidBase + 2,  // 12
+        InvalidCharacter    = InvalidBase + 2,  // 12
         InvalidEncodedType  = InvalidBase + 3,  // 13
         InvalidPaddingCount = InvalidBase + 4,  // 14
     };
@@ -47,7 +84,8 @@ namespace BaseXX
     inline void throwRuntimeError(
         eResultCode code, StringType caller_info, StringType msg = "")
     {
-        std::string error_message{ "Error occurred in " + caller_info + ":\n\t" };
+        std::string error_message{
+            "Error occurred in " + caller_info + ":\n\t" };
 
         if (!msg.empty())
         {
@@ -63,7 +101,7 @@ namespace BaseXX
             case eResultCode::InvalidPaddingCount:
                 error_message += "Invalid encoded padding count.";
                 break;
-            case eResultCode::InvalidCharactor:
+            case eResultCode::InvalidCharacter:
                 error_message += "Invalid encoded character.";
                 break;
             case eResultCode::InvalidEncodedType:
@@ -80,6 +118,10 @@ namespace BaseXX
 
 namespace _64_
 {
+    /// ========================================================================
+    /// Base64[-URLsafe] Encoding/Decoding Implementation
+    /// ========================================================================
+
     /// The Base 64 Alphabet Table
     /// https://datatracker.ietf.org/doc/html/rfc4648#section-4
     ///
@@ -160,7 +202,7 @@ namespace _64_
             return 63;
         }
 
-        throwRuntimeError(eResultCode::InvalidCharactor, __FUNCTION__);
+        throwRuntimeError(eResultCode::InvalidCharacter, __FUNCTION__);
     }
 
     inline const uint8_t urlsafe_decode_char(const char c)
@@ -186,7 +228,7 @@ namespace _64_
             return 63;
         }
 
-        throwRuntimeError(eResultCode::InvalidCharactor, __FUNCTION__);
+        throwRuntimeError(eResultCode::InvalidCharacter, __FUNCTION__);
     }
     
     inline std::string encode_base(const char* data,
@@ -444,6 +486,10 @@ namespace _64_
 
 namespace _32_
 {
+    /// ========================================================================
+    /// Base32[-Hex] Encoding/Decoding Implementation
+    /// ========================================================================
+
     /// The Base 32 Alphabet Table
     /// https://datatracker.ietf.org/doc/html/rfc4648#section-6
     ///
@@ -464,7 +510,8 @@ namespace _32_
         'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',  // 24 ~ 31
     };
 
-    inline eResultCode check_format(const char* encoded_text, const size_t text_len)
+    inline eResultCode check_format(
+        const char* encoded_text, const size_t text_len)
     {
         if (text_len % 8 != 0)
         {
@@ -503,7 +550,7 @@ namespace _32_
             return 26 + (c - '2');
         }
 
-        throwRuntimeError(eResultCode::InvalidCharactor, __FUNCTION__);
+        throwRuntimeError(eResultCode::InvalidCharacter, __FUNCTION__);
     }
 
     inline const uint8_t hex_decode_char(const char c)
@@ -517,7 +564,7 @@ namespace _32_
             return 10 + (c - 'A');
         }
 
-        throwRuntimeError(eResultCode::InvalidCharactor, __FUNCTION__);
+        throwRuntimeError(eResultCode::InvalidCharacter, __FUNCTION__);
     }
 
     inline std::string encode_base(const char* data,
@@ -819,6 +866,10 @@ namespace _32_
 
 namespace _16_
 {
+    /// ========================================================================
+    /// Base16 Encoding/Decoding Implementation
+    /// ========================================================================
+
     /// The Base 16 Alphabet Table
     /// https://datatracker.ietf.org/doc/html/rfc4648#section-8
     ///
@@ -838,7 +889,7 @@ namespace _16_
             return 10 + (c - 'A');
         }
 
-        throwRuntimeError(eResultCode::InvalidCharactor, __FUNCTION__);
+        throwRuntimeError(eResultCode::InvalidCharacter, __FUNCTION__);
     }
 
     inline std::string encode_base(const char* data,
@@ -921,7 +972,8 @@ namespace _16_
     {
         return (list.size() == 0)
             ? std::string("")
-            : decode_base(reinterpret_cast<const char*>(list.begin()), list.size());
+            : decode_base(
+                reinterpret_cast<const char*>(list.begin()), list.size());
     }
 
     inline std::string decode(const std::vector<uint8_t>& vec)
