@@ -31,7 +31,7 @@ namespace BaseXX
         
         InvalidBase         = 10,
         InvalidLength       = InvalidBase + 1,  // 11
-        InvalidCharactor    = InvalidBase + 2,  // 12
+        InvalidCharacter    = InvalidBase + 2,  // 12
         InvalidEncodedType  = InvalidBase + 3,  // 13
         InvalidPaddingCount = InvalidBase + 4,  // 14
     };
@@ -63,7 +63,7 @@ namespace BaseXX
             case eResultCode::InvalidPaddingCount:
                 error_message += "Invalid encoded padding count.";
                 break;
-            case eResultCode::InvalidCharactor:
+            case eResultCode::InvalidCharacter:
                 error_message += "Invalid encoded character.";
                 break;
             case eResultCode::InvalidEncodedType:
@@ -160,7 +160,7 @@ namespace _64_
             return 63;
         }
 
-        throwRuntimeError(eResultCode::InvalidCharactor, __FUNCTION__);
+        throwRuntimeError(eResultCode::InvalidCharacter, __FUNCTION__);
     }
 
     inline const uint8_t urlsafe_decode_char(const char c)
@@ -186,7 +186,7 @@ namespace _64_
             return 63;
         }
 
-        throwRuntimeError(eResultCode::InvalidCharactor, __FUNCTION__);
+        throwRuntimeError(eResultCode::InvalidCharacter, __FUNCTION__);
     }
     
     inline std::string encode_base(const char* data,
@@ -464,7 +464,8 @@ namespace _32_
         'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',  // 24 ~ 31
     };
 
-    inline eResultCode check_format(const char* encoded_text, const size_t text_len)
+    inline eResultCode check_format(
+        const char* encoded_text, const size_t text_len)
     {
         if (text_len % 8 != 0)
         {
@@ -503,7 +504,7 @@ namespace _32_
             return 26 + (c - '2');
         }
 
-        throwRuntimeError(eResultCode::InvalidCharactor, __FUNCTION__);
+        throwRuntimeError(eResultCode::InvalidCharacter, __FUNCTION__);
     }
 
     inline const uint8_t hex_decode_char(const char c)
@@ -517,7 +518,7 @@ namespace _32_
             return 10 + (c - 'A');
         }
 
-        throwRuntimeError(eResultCode::InvalidCharactor, __FUNCTION__);
+        throwRuntimeError(eResultCode::InvalidCharacter, __FUNCTION__);
     }
 
     inline std::string encode_base(const char* data,
@@ -838,7 +839,7 @@ namespace _16_
             return 10 + (c - 'A');
         }
 
-        throwRuntimeError(eResultCode::InvalidCharactor, __FUNCTION__);
+        throwRuntimeError(eResultCode::InvalidCharacter, __FUNCTION__);
     }
 
     inline std::string encode_base(const char* data,
@@ -921,7 +922,8 @@ namespace _16_
     {
         return (list.size() == 0)
             ? std::string("")
-            : decode_base(reinterpret_cast<const char*>(list.begin()), list.size());
+            : decode_base(
+                reinterpret_cast<const char*>(list.begin()), list.size());
     }
 
     inline std::string decode(const std::vector<uint8_t>& vec)
