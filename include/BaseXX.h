@@ -11,25 +11,25 @@
 /// namespace BaseXX
 /// {
 ///     // Common functions, enums, and type definitions
-///     namespace _64
+///     namespace _64_
 ///     {
 ///         // Base64[-URLsafe] encoding & decoding implementations
 ///         // Helper functions
 ///     }
-///     namespace _32
+///     namespace _32_
 ///     {
 ///         // Base32[-Hex] encoding & decoding implementations
 ///         // Helper functions
 ///     }
-///     namespace _16
+///     namespace _16_
 ///     {
 ///         // Base16 encoding & decoding implementations
 ///         // Helper functions
 ///     }
 /// }
-/// using base64 = ::BaseXX::_64;
-/// using base32 = ::BaseXX::_32;
-/// using base16 = ::BaseXX::_16;
+/// using base64 = ::BaseXX::_64_;
+/// using base32 = ::BaseXX::_32_;
+/// using base16 = ::BaseXX::_16_;
 ///
 /// ----------------------------------------------------------------------------
 /// License: WTFPL (http://www.wtfpl.net/about/)
