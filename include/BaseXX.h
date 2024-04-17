@@ -571,7 +571,7 @@ namespace _32_
         const size_t data_len, const uint8_t* table = encoding_table)
     {
         std::string encoded{};
-        encoded.reserve(data_len * 2);
+        encoded.reserve(data_len * 8 / 5);
 
         uint8_t decoded_data_5[5] = { 0, };
         uint8_t encoded_data_8[8] = { 0, };
