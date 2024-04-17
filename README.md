@@ -14,10 +14,11 @@ int main()
     {  // Base64[-URLsafe]
         std::string encoded_text         = base64::encode(str);
         std::string urlsafe_encoded_text = base64::encode_urlsafe(str);
-        std::string decoded_text         = base64::decode(encoded_text);
-        std::string urlsafe_decoded_text = base64::decode_urlsafe(urlsafe_encoded_text);
         std::cout << "Base64 Encoded Text: "         << encoded_text         << std::endl;
         std::cout << "Base64 URLsafe Encoded Text: " << urlsafe_encoded_text << std::endl;
+
+        std::string decoded_text         = base64::decode(encoded_text);
+        std::string urlsafe_decoded_text = base64::decode_urlsafe(urlsafe_encoded_text);
         std::cout << "Base64 Decoded Text: "         << decoded_text         << std::endl;
         std::cout << "Base64 URLsafe Decoded Text: " << urlsafe_decoded_text << std::endl;
     }
@@ -25,18 +26,20 @@ int main()
     {  // Base32[-Hex]
         std::string encoded_text     = base32::encode(str);
         std::string hex_encoded_text = base32::encode_hex(str);
-        std::string decoded_text     = base32::decode(encoded_text);
-        std::string hex_decoded_text = base32::decode_hex(hex_encoded_text);
         std::cout << "Base32 Encoded Text: "     << encoded_text     << std::endl;
         std::cout << "Base32 Hex Encoded Text: " << hex_encoded_text << std::endl;
+
+        std::string decoded_text     = base32::decode(encoded_text);
+        std::string hex_decoded_text = base32::decode_hex(hex_encoded_text);
         std::cout << "Base32 Decoded Text: "     << decoded_text     << std::endl;
         std::cout << "Base32 Hex Decoded Text: " << hex_decoded_text << std::endl;
     }
     
     {  // Base16
         std::string encoded_text = base16::encode(str);
-        std::string decoded_text = base16::decode(encoded_text);
         std::cout << "Base16 Encoded Text: " << encoded_text << std::endl;
+
+        std::string decoded_text = base16::decode(encoded_text);
         std::cout << "Base16 Decoded Text: " << decoded_text << std::endl;
     }
 
