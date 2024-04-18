@@ -73,13 +73,6 @@ namespace BaseXX
         InvalidPaddingCount = InvalidBase + 4,  // 14
     };
 
-    enum class eEncodedType
-    {
-        Standard = 0,
-        URLSafe,       // 1
-        Hex,           // 2
-    };
-
     [[noreturn]]
     inline void throwRuntimeError(
         eResultCode code, StringType caller_info, StringType msg = "")
@@ -299,26 +292,13 @@ namespace _64_
     }
 
     inline std::string decode_base(const char* data,
-        const size_t data_len, eEncodedType encoded_type)
+        const size_t data_len,
+        const uint8_t (*decode_char_func)(const char) = &decode_char)
     {
         eResultCode code = check_format(data, data_len);
         if (code != eResultCode::Success)
         {
              throwRuntimeError(code, __FUNCTION__);
-        }
-
-        std::function<const uint8_t(const char)> decode_char_func{};
-        if (encoded_type == eEncodedType::Standard)
-        {
-            decode_char_func = &decode_char;
-        }
-        else if (encoded_type == eEncodedType::URLSafe)
-        {
-            decode_char_func = &urlsafe_decode_char;
-        }
-        else
-        {
-            throwRuntimeError(eResultCode::InvalidEncodedType, __FUNCTION__);
         }
 
         std::string decoded{};
@@ -440,22 +420,22 @@ namespace _64_
     {
         return (str.empty())
             ? std::string("")
-            : decode_base(str.data(), str.size(), eEncodedType::Standard);
+            : decode_base(str.data(), str.size());
     }
 
     inline std::string decode_urlsafe(StringType str = "")
     {
         return (str.empty())
             ? std::string("")
-            : decode_base(str.data(), str.size(), eEncodedType::URLSafe);
+            : decode_base(str.data(), str.size(), &urlsafe_decode_char);
     }
 
     inline std::string decode(const std::initializer_list<uint8_t>& list)
     {
         return (list.size() == 0)
             ? std::string("")
-            : decode_base(reinterpret_cast<const char*>(list.begin()),
-                list.size(), eEncodedType::Standard);
+            : decode_base(
+                reinterpret_cast<const char*>(list.begin()), list.size());
     }
 
     inline std::string decode_urlsafe(
@@ -464,15 +444,15 @@ namespace _64_
         return (list.size() == 0)
             ? std::string("")
             : decode_base(reinterpret_cast<const char*>(list.begin()),
-                list.size(), eEncodedType::URLSafe);
+                list.size(), &urlsafe_decode_char);
     }
 
     inline std::string decode(const std::vector<uint8_t>& vec)
     {
         return (vec.empty())
             ? std::string("")
-            : decode_base(reinterpret_cast<const char*>(vec.data()),
-                vec.size(), eEncodedType::Standard);
+            : decode_base(
+                reinterpret_cast<const char*>(vec.data()), vec.size());
     }
 
     inline std::string decode_urlsafe(const std::vector<uint8_t>& vec)
@@ -480,7 +460,7 @@ namespace _64_
         return (vec.empty())
             ? std::string("")
             : decode_base(reinterpret_cast<const char*>(vec.data()),
-                vec.size(), eEncodedType::URLSafe);
+                vec.size(), &urlsafe_decode_char);
     }
 }  // namespace BaseXX::_64_
 
@@ -660,26 +640,13 @@ namespace _32_
     }
 
     inline std::string decode_base(const char* data,
-        const size_t data_len, eEncodedType encoded_type)
+        const size_t data_len,
+        const uint8_t (*decode_char_func)(const char) = &decode_char)
     {
         eResultCode code = check_format(data, data_len);
         if (code != eResultCode::Success)
         {
             throwRuntimeError(code, __FUNCTION__);
-        }
-
-        std::function<const uint8_t(const char)> decode_char_func{};
-        if (encoded_type == eEncodedType::Standard)
-        {
-            decode_char_func = &decode_char;
-        }
-        else if (encoded_type == eEncodedType::Hex)
-        {
-            decode_char_func = &hex_decode_char;
-        }
-        else
-        {
-            throwRuntimeError(eResultCode::InvalidEncodedType, __FUNCTION__);
         }
 
         std::string decoded{};
@@ -821,22 +788,22 @@ namespace _32_
     {
         return (str.empty())
             ? std::string("")
-            : decode_base(str.data(), str.size(), eEncodedType::Standard);
+            : decode_base(str.data(), str.size());
     }
 
     inline std::string decode_hex(StringType str = "")
     {
         return (str.empty())
             ? std::string("")
-            : decode_base(str.data(), str.size(), eEncodedType::Hex);
+            : decode_base(str.data(), str.size(), &hex_decode_char);
     }
 
     inline std::string decode(const std::initializer_list<uint8_t>& list)
     {
         return (list.size() == 0)
             ? std::string("")
-            : decode_base(reinterpret_cast<const char*>(list.begin()),
-                list.size(), eEncodedType::Standard);
+            : decode_base(
+                reinterpret_cast<const char*>(list.begin()), list.size());
     }
 
     inline std::string decode_hex(const std::initializer_list<uint8_t>& list)
@@ -844,15 +811,15 @@ namespace _32_
         return (list.size() == 0)
             ? std::string("")
             : decode_base(reinterpret_cast<const char*>(list.begin()),
-                list.size(), eEncodedType::Hex);
+                list.size(), &hex_decode_char);
     }
 
     inline std::string decode(const std::vector<uint8_t>& vec)
     {
         return (vec.empty())
             ? std::string("")
-            : decode_base(reinterpret_cast<const char*>(vec.data()),
-                vec.size(), eEncodedType::Standard);
+            : decode_base(
+                reinterpret_cast<const char*>(vec.data()), vec.size());
     }
 
     inline std::string decode_hex(const std::vector<uint8_t>& vec)
@@ -860,7 +827,7 @@ namespace _32_
         return (vec.empty())
             ? std::string("")
             : decode_base(reinterpret_cast<const char*>(vec.data()),
-                vec.size(), eEncodedType::Hex);
+                vec.size(), &hex_decode_char);
     }
 }  // namespace BaseXX::_32_
 
