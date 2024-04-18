@@ -40,7 +40,6 @@
 
 
 #include <cstdint>  // uint8_t
-#include <functional>  // std::function
 #include <stdexcept>  // std::runtime_error
 #include <string>
 #include <vector>
