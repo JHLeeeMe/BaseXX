@@ -76,8 +76,9 @@ namespace BaseXX
     inline void throwRuntimeError(
         eResultCode code, StringType caller_info, StringType msg = "")
     {
-        std::string error_message{
-            "Error occurred in " + caller_info + ":\n\t" };
+        std::string error_message{ "Error occurred in " };
+        error_message += caller_info;
+        error_message += ":\n\t";
 
         if (!msg.empty())
         {
