@@ -32,7 +32,7 @@
 /// using base16 = ::BaseXX::_16_;
 ///
 /// ----------------------------------------------------------------------------
-/// License: WTFPL (http://www.wtfpl.net/about/)
+/// License: The Unlicense <http://unlicense.org/>
 /// ============================================================================
 
 #ifndef BASEXX_H
